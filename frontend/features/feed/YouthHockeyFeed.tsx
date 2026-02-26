@@ -150,7 +150,7 @@ export function YouthHockeyFeed() {
   };
 
   return (
-    <main className="relative h-[100dvh] overflow-hidden bg-[#081923] text-white">
+    <main className="relative h-[100dvh] overflow-hidden bg-[#040406] text-white">
       <div
         ref={containerRef}
         className="h-[100dvh] snap-y snap-mandatory overflow-y-auto overscroll-y-contain scroll-smooth"
@@ -177,16 +177,16 @@ export function YouthHockeyFeed() {
               disablePictureInPicture
             />
 
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/75" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/72 via-black/10 to-black/82" />
 
             <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 pt-[max(1rem,env(safe-area-inset-top))]">
               <Link
                 href="/content"
-                className="pointer-events-auto rounded-full border border-white/30 bg-black/35 px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-white/95"
+                className="pointer-events-auto rounded-full border border-brand/45 bg-black/55 px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-brand-muted"
               >
                 Topics
               </Link>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/85">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent/90">
                 Youth Hockey
               </p>
             </div>
@@ -195,7 +195,9 @@ export function YouthHockeyFeed() {
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/75">
                 Clip {index + 1} of {youthHockeyVideos.length}
               </p>
-              <h2 className="mt-2 font-brand text-3xl leading-tight text-white">{video.caption}</h2>
+              <h2 className="font-brand mt-2 bg-gradient-to-r from-white via-brand-muted to-accent bg-clip-text text-3xl leading-tight text-transparent">
+                {video.caption}
+              </h2>
               <p className="mt-2 text-sm text-white/80">Swipe up anytime for the next lesson.</p>
             </div>
 
@@ -206,7 +208,7 @@ export function YouthHockeyFeed() {
                   onClick={() => {
                     void handleTapToStart();
                   }}
-                  className="rounded-2xl border border-white/40 bg-white/20 px-6 py-3 text-base font-bold text-white backdrop-blur-sm"
+                  className="rounded-2xl border border-white/20 bg-gradient-to-r from-accent to-brand px-6 py-3 text-base font-bold text-background shadow-[0_20px_36px_-22px_rgba(254,44,85,0.85)]"
                 >
                   Tap to start with sound
                 </button>
@@ -219,17 +221,19 @@ export function YouthHockeyFeed() {
           ref={(panelElement) => {
             panelRefs.current[END_PANEL_INDEX] = panelElement;
           }}
-          className="flex h-[100dvh] snap-start items-center justify-center bg-gradient-to-b from-[#0d2735] to-[#143b4d] px-6"
+          className="flex h-[100dvh] snap-start items-center justify-center bg-gradient-to-b from-[#09090f] via-[#0c0b14] to-[#12060c] px-6"
         >
-          <div className="w-full max-w-sm rounded-3xl border border-white/20 bg-white/10 p-7 text-center backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-3xl border border-white/15 bg-black/45 p-7 text-center shadow-[0_26px_65px_-38px_rgba(37,244,238,0.6)] ring-1 ring-brand/25 backdrop-blur-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">
               That&apos;s all for now
             </p>
-            <h2 className="font-brand mt-3 text-3xl text-white">More videos coming soon!</h2>
+            <h2 className="font-brand mt-3 bg-gradient-to-r from-foreground via-brand-muted to-accent bg-clip-text text-3xl text-transparent">
+              More videos coming soon!
+            </h2>
             <button
               type="button"
               onClick={handleReplay}
-              className="mt-6 inline-flex w-full items-center justify-center rounded-2xl bg-[#2d8ca5] px-4 py-3 text-base font-bold text-white transition hover:bg-[#236f83]"
+              className="mt-6 inline-flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-accent to-brand px-4 py-3 text-base font-extrabold text-background transition hover:brightness-110"
             >
               Replay
             </button>
