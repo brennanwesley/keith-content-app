@@ -1,10 +1,12 @@
 import { NestFactory } from '@nestjs/core';
+import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const configService = app.get(ConfigService);
 
-  const allowedOrigins = (process.env.CORS_ORIGINS ?? '')
+  const allowedOrigins = (configService.get<string>('CORS_ORIGINS') ?? '')
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
@@ -13,6 +15,11 @@ async function bootstrap() {
     origin: allowedOrigins.length > 0 ? allowedOrigins : true,
   });
 
-  await app.listen(process.env.PORT ?? 3000);
+  const port = configService.get<number>('PORT') ?? 3001;
+
+  await app.listen(port);
 }
-bootstrap();
+bootstrap().catch((error: unknown) => {
+  console.error('Failed to start backend', error);
+  process.exit(1);
+});

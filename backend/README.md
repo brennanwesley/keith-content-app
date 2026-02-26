@@ -13,10 +13,12 @@ npm run start:dev
 
 Copy `.env.example` to `.env` and configure:
 
-- `PORT` (default `3000`)
+- `PORT` (default `3001` for local monorepo dev)
 - `CORS_ORIGINS` (comma-separated origins)
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
+
+Environment variables are validated at startup.
 
 ## Render deployment settings
 
@@ -32,3 +34,5 @@ Set these environment variables in Render:
 - `CORS_ORIGINS`
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
+
+For the full deployment checklist, see `../infra/render.md`.
