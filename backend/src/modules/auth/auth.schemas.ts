@@ -1,0 +1,68 @@
+import { BadRequestException } from '@nestjs/common';
+import { z } from 'zod';
+
+const passwordSchema = z
+  .string()
+  .min(10, 'Password must be at least 10 characters.')
+  .max(128, 'Password must be at most 128 characters.')
+  .regex(/[A-Z]/, 'Password must include at least one uppercase letter.')
+  .regex(/[a-z]/, 'Password must include at least one lowercase letter.')
+  .regex(/[0-9]/, 'Password must include at least one number.');
+
+const signupSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .email('Enter a valid email address.')
+    .max(320)
+    .transform((value) => value.toLowerCase()),
+  username: z
+    .string()
+    .trim()
+    .min(3, 'Username must be at least 3 characters.')
+    .max(32, 'Username must be at most 32 characters.')
+    .regex(
+      /^[a-zA-Z0-9_]+$/,
+      'Username can contain only letters, numbers, and underscores.',
+    ),
+  password: passwordSchema,
+});
+
+const loginSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .email('Enter a valid email address.')
+    .max(320)
+    .transform((value) => value.toLowerCase()),
+  password: z.string().min(1, 'Password is required.').max(128),
+});
+
+export type SignupInput = z.infer<typeof signupSchema>;
+export type LoginInput = z.infer<typeof loginSchema>;
+
+export function parseSignupInput(payload: unknown): SignupInput {
+  const parsed = signupSchema.safeParse(payload);
+
+  if (!parsed.success) {
+    throw new BadRequestException({
+      message: 'Invalid signup payload.',
+      errors: parsed.error.flatten().fieldErrors,
+    });
+  }
+
+  return parsed.data;
+}
+
+export function parseLoginInput(payload: unknown): LoginInput {
+  const parsed = loginSchema.safeParse(payload);
+
+  if (!parsed.success) {
+    throw new BadRequestException({
+      message: 'Invalid login payload.',
+      errors: parsed.error.flatten().fieldErrors,
+    });
+  }
+
+  return parsed.data;
+}

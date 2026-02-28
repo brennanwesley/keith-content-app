@@ -21,6 +21,12 @@ export default function Home() {
             Fast lessons. Real skills. Built for mobile and ready to swipe.
           </p>
           <Link
+            href="/auth"
+            className="inline-flex w-full items-center justify-center rounded-2xl border border-brand/35 bg-surface-soft px-5 py-4 text-lg font-bold text-brand-muted transition hover:border-accent/45 hover:text-foreground"
+          >
+            Create Account / Log In
+          </Link>
+          <Link
             href="/content"
             className="inline-flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-accent to-brand px-5 py-4 text-lg font-extrabold text-background transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
