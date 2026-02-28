@@ -52,8 +52,28 @@ Use it with `README_BUILD_PLAN.md` as the strategy source of truth.
 ### Daily sign-off
 - [ ] Day 2 acceptance criteria met.
 - [ ] Blockers documented.
-
----
+### Additional Build Steps for Day 2
+#### Phase 1 — Fix flow immediately (fast, high impact)
+- [x] Split login vs signup post-submit behavior:
+- [x] signup keeps onboarding
+- [x] login goes directly to feed
+- [x] Add content page Skip → feed button in same footer row style as Back.
+- [x] Add feed header icon/button → settings page.
+- [x] Edge case fallback: if an existing account is missing age-gate completion, require one-time age gate before feed.
+#### Phase 2 — Enable real preferences
+- [ ] DB migration for user_content_preferences + RLS.
+- [ ] Backend endpoints:
+- [ ] GET /v1/content-types
+- [ ] GET /v1/me/content-preferences
+- [ ] PUT /v1/me/content-preferences
+- [ ] Settings page tabs:
+- [ ] Content Types
+- [ ] Account Profile (reuse password re-auth change-email flow)
+- [ ] Parent/Guardian Link (MVP placeholder + status first)
+#### Phase 3 — Security hardening + audit
+- [ ] Protect sensitive endpoints with authenticated user context.
+- [ ] Stop trusting userId from client body for protected writes (derive from auth token).
+- [ ] Add account_security_events writes for credential changes.
 
 ## Day 3 - Profiles, parent links, and category preferences
 **Goal:** Complete account controls and family-link behavior.

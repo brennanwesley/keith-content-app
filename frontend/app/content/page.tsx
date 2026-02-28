@@ -45,9 +45,15 @@ export default function ContentSelectionPage() {
           </article>
         </div>
 
-        <footer className="mt-auto pt-6">
+        <footer className="mt-auto flex items-center justify-between gap-4 pt-6">
           <Link href="/" className="text-sm font-semibold text-brand-muted hover:text-accent-strong">
             ← Back to home
+          </Link>
+          <Link
+            href="/feed/youth-hockey"
+            className="text-sm font-semibold text-brand-muted hover:text-accent-strong"
+          >
+            Skip →
           </Link>
         </footer>
       </section>

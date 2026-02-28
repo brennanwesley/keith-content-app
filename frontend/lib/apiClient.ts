@@ -36,6 +36,7 @@ export type LoginResult = {
     id: string;
     email: string;
     emailVerified: boolean;
+    hasCompletedAgeGate: boolean;
   };
 };
 

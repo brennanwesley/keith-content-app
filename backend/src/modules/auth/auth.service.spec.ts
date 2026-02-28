@@ -6,6 +6,9 @@ describe('AuthService', () => {
   const createUserMock = jest.fn();
   const deleteUserMock = jest.fn();
   const updateUserByIdMock = jest.fn();
+  const maybeSingleMock = jest.fn();
+  const eqMock = jest.fn(() => ({ maybeSingle: maybeSingleMock }));
+  const selectMock = jest.fn(() => ({ eq: eqMock }));
   const fromMock = jest.fn();
 
   const serviceClientMock = {
@@ -28,6 +31,9 @@ describe('AuthService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    fromMock.mockReturnValue({
+      select: selectMock,
+    });
     service = new AuthService(supabaseServiceMock as never);
   });
 
@@ -48,6 +54,12 @@ describe('AuthService', () => {
       },
       error: null,
     });
+    maybeSingleMock.mockResolvedValue({
+      data: {
+        user_id: 'user-123',
+      },
+      error: null,
+    });
 
     const result = await service.login({
       email: 'bodie.tharaldson@gmail.com',
@@ -58,6 +70,9 @@ describe('AuthService', () => {
       email: 'bodie.tharaldson@gmail.com',
       password: 'testingTest1234',
     });
+    expect(fromMock).toHaveBeenCalledWith('age_gates');
+    expect(selectMock).toHaveBeenCalledWith('user_id');
+    expect(eqMock).toHaveBeenCalledWith('user_id', 'user-123');
     expect(result).toEqual({
       accessToken: 'access-token',
       refreshToken: 'refresh-token',
@@ -67,6 +82,7 @@ describe('AuthService', () => {
         id: 'user-123',
         email: 'bodie.tharaldson@gmail.com',
         emailVerified: true,
+        hasCompletedAgeGate: true,
       },
     });
   });

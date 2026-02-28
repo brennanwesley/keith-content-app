@@ -11,9 +11,15 @@ import { ParentalAttestationModal } from "./ParentalAttestationModal";
 
 type AgeGateCardProps = {
   userId: string;
+  continueHref?: string;
+  continueLabel?: string;
 };
 
-export function AgeGateCard({ userId }: AgeGateCardProps) {
+export function AgeGateCard({
+  userId,
+  continueHref = "/content",
+  continueLabel = "Continue to content selection",
+}: AgeGateCardProps) {
   const [birthdate, setBirthdate] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -110,10 +116,10 @@ export function AgeGateCard({ userId }: AgeGateCardProps) {
                 Access Granted!
               </p>
               <Link
-                href="/content"
+                href={continueHref}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-accent to-brand px-4 py-3 text-base font-extrabold text-background transition hover:brightness-110"
               >
-                Continue to content selection
+                {continueLabel}
                 <span aria-hidden>→</span>
               </Link>
             </div>
@@ -129,10 +135,10 @@ export function AgeGateCard({ userId }: AgeGateCardProps) {
                     {new Date(attestationResult.expiresAt).toLocaleDateString()}
                   </p>
                   <Link
-                    href="/content"
+                    href={continueHref}
                     className="inline-flex text-sm font-semibold text-brand-muted hover:text-accent-strong"
                   >
-                    Continue to content selection →
+                    {continueLabel} →
                   </Link>
                 </>
               ) : (

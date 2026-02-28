@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
   changeEmailWithPassword,
@@ -82,12 +83,14 @@ function getUsernameRuleMessage(username: string): string | null {
 }
 
 export function AuthScreen() {
+  const router = useRouter();
   const [mode, setMode] = useState<AuthMode>("signup");
   const [formState, setFormState] = useState<FormState>(initialFormState);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [outcome, setOutcome] = useState<AuthOutcome | null>(null);
   const [loginSession, setLoginSession] = useState<LoginResult | null>(null);
   const [ageGateUserId, setAgeGateUserId] = useState<string | null>(null);
+  const [ageGateFlow, setAgeGateFlow] = useState<AuthMode>("signup");
   const [emailChangeState, setEmailChangeState] =
     useState<EmailChangeState>(initialEmailChangeState);
   const [emailChangeOutcome, setEmailChangeOutcome] = useState<AuthOutcome | null>(null);
@@ -116,6 +119,7 @@ export function AuthScreen() {
     setOutcome(null);
     setLoginSession(null);
     setAgeGateUserId(null);
+    setAgeGateFlow("signup");
     setEmailChangeState(initialEmailChangeState);
     setEmailChangeOutcome(null);
   };
@@ -262,6 +266,7 @@ export function AuthScreen() {
           type: "success",
           message: `Account created for ${signupResult.email}.`,
         });
+        setAgeGateFlow("signup");
         setAgeGateUserId(signupResult.userId);
 
         return;
@@ -277,11 +282,25 @@ export function AuthScreen() {
         password: "",
       }));
 
+      if (loginResult.user.hasCompletedAgeGate) {
+        setAgeGateUserId(null);
+        setOutcome({
+          type: "success",
+          message: `Welcome back, ${loginResult.user.email}. Redirecting to your feed...`,
+        });
+        router.push("/feed/youth-hockey");
+
+        return;
+      }
+
+      setAgeGateFlow("login");
+      setAgeGateUserId(loginResult.user.id);
+
       setOutcome({
         type: "success",
-        message: `Welcome back, ${loginResult.user.email}.`,
+        message:
+          "Welcome back. A one-time age confirmation is required before entering your feed.",
       });
-      setAgeGateUserId(loginResult.user.id);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Something went wrong. Please retry.";
@@ -502,7 +521,17 @@ export function AuthScreen() {
           </article>
         ) : null}
 
-        {ageGateUserId ? <AgeGateCard userId={ageGateUserId} /> : null}
+        {ageGateUserId ? (
+          <AgeGateCard
+            userId={ageGateUserId}
+            continueHref={ageGateFlow === "login" ? "/feed/youth-hockey" : "/content"}
+            continueLabel={
+              ageGateFlow === "login"
+                ? "Continue to your feed"
+                : "Continue to content selection"
+            }
+          />
+        ) : null}
 
         <footer className="mt-auto pt-6">
           <Link href="/" className="text-sm font-semibold text-brand-muted hover:text-accent-strong">

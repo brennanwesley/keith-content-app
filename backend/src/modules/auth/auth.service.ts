@@ -29,6 +29,7 @@ export type LoginResult = {
     id: string;
     email: string;
     emailVerified: boolean;
+    hasCompletedAgeGate: boolean;
   };
 };
 
@@ -147,6 +148,16 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password.');
     }
 
+    const { data: ageGateRecord, error: ageGateError } = await client
+      .from('age_gates')
+      .select('user_id')
+      .eq('user_id', data.user.id)
+      .maybeSingle();
+
+    if (ageGateError) {
+      throw new InternalServerErrorException('Failed to load age-gate status.');
+    }
+
     return {
       accessToken: data.session.access_token,
       refreshToken: data.session.refresh_token,
@@ -156,6 +167,7 @@ export class AuthService {
         id: data.user.id,
         email: data.user.email ?? input.email,
         emailVerified: Boolean(data.user.email_confirmed_at),
+        hasCompletedAgeGate: Boolean(ageGateRecord),
       },
     };
   }

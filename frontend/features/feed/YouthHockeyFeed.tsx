@@ -179,7 +179,7 @@ export function YouthHockeyFeed() {
 
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/72 via-black/10 to-black/82" />
 
-            <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 pt-[max(1rem,env(safe-area-inset-top))]">
+            <div className="absolute inset-x-0 top-0 z-10 grid grid-cols-[auto_1fr_auto] items-center gap-3 px-4 pt-[max(1rem,env(safe-area-inset-top))]">
               <Link
                 href="/content"
                 aria-label="Back to content selection"
@@ -187,9 +187,16 @@ export function YouthHockeyFeed() {
               >
                 <span aria-hidden>←</span>
               </Link>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent/90">
+              <p className="text-center text-xs font-semibold uppercase tracking-[0.18em] text-accent/90">
                 Youth Hockey
               </p>
+              <Link
+                href="/settings"
+                aria-label="Open settings"
+                className="pointer-events-auto inline-flex size-9 items-center justify-center rounded-full border border-brand/45 bg-black/55 text-sm font-bold text-brand-muted transition hover:border-accent/50 hover:text-white"
+              >
+                <span aria-hidden>⚙</span>
+              </Link>
             </div>
 
             <div className="absolute inset-x-0 bottom-0 z-10 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
