@@ -71,9 +71,9 @@ Use it with `README_BUILD_PLAN.md` as the strategy source of truth.
 - [x] Account Profile (reuse password re-auth change-email flow)
 - [x] Parent/Guardian Link (MVP placeholder + status first)
 #### Phase 3 — Security hardening + audit
-- [ ] Protect sensitive endpoints with authenticated user context.
-- [ ] Stop trusting userId from client body for protected writes (derive from auth token).
-- [ ] Add account_security_events writes for credential changes.
+- [x] Protect sensitive endpoints with authenticated user context.
+- [x] Stop trusting userId from client body for protected writes (derive from auth token).
+- [x] Add account_security_events writes for credential changes.
 
 ## Day 3 - Profiles, parent links, and category preferences
 **Goal:** Complete account controls and family-link behavior.

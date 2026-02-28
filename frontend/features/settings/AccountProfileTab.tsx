@@ -40,14 +40,12 @@ export function AccountProfileTab({
     }
 
     const normalizedNewEmail = newEmail.trim().toLowerCase();
-    const currentEmail = authSession.user.email.trim().toLowerCase();
-
     if (!normalizedNewEmail) {
       setOutcome({ type: "error", message: "New email is required." });
       return;
     }
 
-    if (normalizedNewEmail === currentEmail) {
+    if (normalizedNewEmail === authSession.user.email.trim().toLowerCase()) {
       setOutcome({
         type: "error",
         message: "New email must be different from current email.",
@@ -67,12 +65,13 @@ export function AccountProfileTab({
     setOutcome(null);
 
     try {
-      const changedAccount = await changeEmailWithPassword({
-        userId: authSession.user.id,
-        currentEmail,
+      const changedAccount = await changeEmailWithPassword(
+        authSession.accessToken,
+        {
         newEmail: normalizedNewEmail,
         password: currentPassword,
-      });
+        },
+      );
 
       const updatedSession: StoredAuthSession = {
         ...authSession,

@@ -57,7 +57,10 @@ export class OnboardingService {
     private readonly configService: ConfigService,
   ) {}
 
-  async submitAgeGate(input: AgeGateInput): Promise<AgeGateResult> {
+  async submitAgeGate(
+    userId: string,
+    input: AgeGateInput,
+  ): Promise<AgeGateResult> {
     const client = this.getClientOrThrow();
 
     const birthdateDate = new Date(`${input.birthdate}T00:00:00Z`);
@@ -72,7 +75,7 @@ export class OnboardingService {
     const { data: profile, error: profileError } = await client
       .from('profiles')
       .select('id')
-      .eq('id', input.userId)
+      .eq('id', userId)
       .maybeSingle();
 
     if (profileError) {
@@ -87,7 +90,7 @@ export class OnboardingService {
 
     const { error: upsertError } = await client.from('age_gates').upsert(
       {
-        user_id: input.userId,
+        user_id: userId,
         birthdate: input.birthdate,
         calculated_age_at_signup: calculatedAge,
         country_code: input.countryCode,
@@ -106,7 +109,7 @@ export class OnboardingService {
     const isUnder13 = calculatedAge < 13;
 
     return {
-      userId: input.userId,
+      userId,
       calculatedAge,
       isUnder13,
       nextStep: isUnder13 ? 'parent_consent_required' : 'direct_access',
@@ -114,6 +117,7 @@ export class OnboardingService {
   }
 
   async submitParentalAttestation(
+    userId: string,
     input: ParentalAttestationInput,
     context: ParentalAttestationContext,
   ): Promise<ParentalAttestationResult> {
@@ -122,7 +126,7 @@ export class OnboardingService {
     const { data: ageGate, error: ageGateError } = await client
       .from('age_gates')
       .select('calculated_age_at_signup')
-      .eq('user_id', input.userId)
+      .eq('user_id', userId)
       .maybeSingle();
 
     if (ageGateError) {
@@ -153,7 +157,7 @@ export class OnboardingService {
     const { data: consent, error: consentError } = await client
       .from('parental_consents')
       .insert({
-        child_user_id: input.userId,
+        child_user_id: userId,
         parent_email: input.parentEmail,
         parent_full_name: input.parentFullName,
         relationship_to_child: input.relationshipToChild,

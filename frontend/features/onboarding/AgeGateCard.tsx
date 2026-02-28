@@ -10,13 +10,13 @@ import {
 import { ParentalAttestationModal } from "./ParentalAttestationModal";
 
 type AgeGateCardProps = {
-  userId: string;
+  accessToken: string;
   continueHref?: string;
   continueLabel?: string;
 };
 
 export function AgeGateCard({
-  userId,
+  accessToken,
   continueHref = "/content",
   continueLabel = "Continue to content selection",
 }: AgeGateCardProps) {
@@ -41,8 +41,7 @@ export function AgeGateCard({
     setErrorMessage(null);
 
     try {
-      const ageGateResult = await submitAgeGate({
-        userId,
+      const ageGateResult = await submitAgeGate(accessToken, {
         birthdate,
         countryCode: "US",
       });
@@ -164,7 +163,7 @@ export function AgeGateCard({
 
       <ParentalAttestationModal
         isOpen={isParentalModalOpen}
-        userId={userId}
+        accessToken={accessToken}
         onClose={() => {
           setIsParentalModalOpen(false);
         }}

@@ -164,12 +164,13 @@ export function AuthScreen() {
     setEmailChangeOutcome(null);
 
     try {
-      const changeResult: ChangeEmailResult = await changeEmailWithPassword({
-        userId: loginSession.user.id,
-        currentEmail,
+      const changeResult: ChangeEmailResult = await changeEmailWithPassword(
+        loginSession.accessToken,
+        {
         newEmail,
         password: emailChangeState.password,
-      });
+        },
+      );
 
       const updatedSession = {
         ...loginSession,
@@ -255,12 +256,17 @@ export function AuthScreen() {
           username,
           password,
         });
+        const bootstrapSession = await loginWithEmail({ email, password });
 
         setFormState({
           email,
           username,
           password: "",
         });
+        setLoginSession(bootstrapSession);
+        saveAuthSession(bootstrapSession);
+        setEmailChangeOutcome(null);
+        setEmailChangeState(initialEmailChangeState);
 
         setOutcome({
           type: "success",
@@ -522,9 +528,9 @@ export function AuthScreen() {
           </article>
         ) : null}
 
-        {ageGateUserId ? (
+        {ageGateUserId && loginSession ? (
           <AgeGateCard
-            userId={ageGateUserId}
+            accessToken={loginSession.accessToken}
             continueHref={ageGateFlow === "login" ? "/feed/youth-hockey" : "/content"}
             continueLabel={
               ageGateFlow === "login"

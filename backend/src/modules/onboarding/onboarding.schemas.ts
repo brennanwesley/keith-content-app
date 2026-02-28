@@ -12,7 +12,6 @@ const birthdateSchema = z
   });
 
 const ageGateSchema = z.object({
-  userId: z.string().uuid('User ID must be a valid UUID.'),
   birthdate: birthdateSchema,
   countryCode: z
     .string()
@@ -22,7 +21,6 @@ const ageGateSchema = z.object({
 });
 
 const parentalAttestationSchema = z.object({
-  userId: z.string().uuid('User ID must be a valid UUID.'),
   parentEmail: z
     .string()
     .trim()

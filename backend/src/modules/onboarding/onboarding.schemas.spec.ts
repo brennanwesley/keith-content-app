@@ -6,17 +6,13 @@ import {
 } from './onboarding.schemas';
 
 describe('onboarding schemas', () => {
-  const validUserId = '550e8400-e29b-41d4-a716-446655440000';
-
   it('accepts valid age-gate payload and normalizes country code', () => {
     const parsed = parseAgeGateInput({
-      userId: validUserId,
       birthdate: '2014-05-01',
       countryCode: 'us',
     });
 
     expect(parsed).toEqual({
-      userId: validUserId,
       birthdate: '2014-05-01',
       countryCode: 'US',
     });
@@ -25,7 +21,6 @@ describe('onboarding schemas', () => {
   it('rejects future birthdate', () => {
     expect(() =>
       parseAgeGateInput({
-        userId: validUserId,
         birthdate: '2999-01-01',
         countryCode: 'US',
       }),
@@ -45,7 +40,6 @@ describe('onboarding schemas', () => {
 
   it('accepts parental attestation payload and normalizes parent email', () => {
     const parsed = parseParentalAttestationInput({
-      userId: validUserId,
       parentEmail: 'Parent@example.com',
       parentFullName: 'Jamie Carter',
       relationshipToChild: 'Mother',
@@ -53,7 +47,6 @@ describe('onboarding schemas', () => {
     });
 
     expect(parsed).toEqual({
-      userId: validUserId,
       parentEmail: 'parent@example.com',
       parentFullName: 'Jamie Carter',
       relationshipToChild: 'Mother',
@@ -64,7 +57,6 @@ describe('onboarding schemas', () => {
   it('rejects parental attestation payload if checkbox is not accepted', () => {
     expect(() =>
       parseParentalAttestationInput({
-        userId: validUserId,
         parentEmail: 'parent@example.com',
         parentFullName: 'Jamie Carter',
         relationshipToChild: 'Mother',

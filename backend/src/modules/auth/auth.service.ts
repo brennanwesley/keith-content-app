@@ -1,10 +1,13 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   InternalServerErrorException,
+  Logger,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { isIP } from 'node:net';
 import { SupabaseService } from '../supabase/supabase.service';
 import type { ChangeEmailInput, LoginInput, SignupInput } from './auth.schemas';
 
@@ -33,8 +36,15 @@ export type LoginResult = {
   };
 };
 
+type AccountSecurityContext = {
+  ipAddress: string | null;
+  userAgent: string | null;
+};
+
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(private readonly supabaseService: SupabaseService) {}
 
   async signup(input: SignupInput): Promise<SignupResult> {
@@ -87,11 +97,31 @@ export class AuthService {
     };
   }
 
-  async changeEmail(input: ChangeEmailInput): Promise<ChangeEmailResult> {
+  async changeEmail(
+    userId: string,
+    input: ChangeEmailInput,
+    context: AccountSecurityContext,
+  ): Promise<ChangeEmailResult> {
     const client = this.getClientOrThrow();
 
-    const currentEmail = input.currentEmail.trim().toLowerCase();
     const newEmail = input.newEmail.trim().toLowerCase();
+
+    const { data: userLookupData, error: userLookupError } =
+      await client.auth.admin.getUserById(userId);
+
+    if (userLookupError || !userLookupData.user?.email) {
+      throw new InternalServerErrorException(
+        'Failed to verify current account email.',
+      );
+    }
+
+    const currentEmail = userLookupData.user.email.trim().toLowerCase();
+
+    if (currentEmail === newEmail) {
+      throw new BadRequestException(
+        'New email must be different from current email.',
+      );
+    }
 
     const { data: reauthData, error: reauthError } =
       await client.auth.signInWithPassword({
@@ -103,12 +133,12 @@ export class AuthService {
       throw new UnauthorizedException('Current password is incorrect.');
     }
 
-    if (reauthData.user.id !== input.userId) {
+    if (reauthData.user.id !== userId) {
       throw new UnauthorizedException('Current password is incorrect.');
     }
 
     const { data: updatedUserData, error: updateUserError } =
-      await client.auth.admin.updateUserById(input.userId, {
+      await client.auth.admin.updateUserById(userId, {
         email: newEmail,
         email_confirm: true,
       });
@@ -129,8 +159,20 @@ export class AuthService {
       );
     }
 
+    await this.recordAccountSecurityEvent(
+      {
+        userId,
+        eventType: 'email_changed',
+        eventMetadata: {
+          previousEmail: currentEmail,
+          nextEmail: updatedEmail,
+        },
+      },
+      context,
+    );
+
     return {
-      userId: input.userId,
+      userId,
       email: updatedEmail,
       emailVerified: Boolean(updatedUserData.user?.email_confirmed_at),
     };
@@ -188,5 +230,43 @@ export class AuthService {
       message.toLowerCase().includes('already registered') ||
       message.toLowerCase().includes('already exists')
     );
+  }
+
+  private async recordAccountSecurityEvent(
+    input: {
+      userId: string;
+      eventType: string;
+      eventMetadata: Record<string, unknown>;
+    },
+    context: AccountSecurityContext,
+  ): Promise<void> {
+    const client = this.getClientOrThrow();
+    const { error } = await client.from('account_security_events').insert({
+      user_id: input.userId,
+      event_type: input.eventType,
+      ip_address: this.normalizeIpAddress(context.ipAddress),
+      user_agent: context.userAgent,
+      event_metadata: input.eventMetadata,
+    });
+
+    if (error) {
+      this.logger.warn(
+        `Failed to record account security event (${input.eventType}) for user ${input.userId}.`,
+      );
+    }
+  }
+
+  private normalizeIpAddress(candidateIp: string | null): string | null {
+    if (!candidateIp) {
+      return null;
+    }
+
+    const normalizedIp = candidateIp.trim();
+
+    if (!normalizedIp || isIP(normalizedIp) === 0) {
+      return null;
+    }
+
+    return normalizedIp;
   }
 }

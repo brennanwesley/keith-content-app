@@ -1,11 +1,11 @@
-import { Body, Controller, Post } from '@nestjs/common';
-import type { Request } from 'express';
-import { Req } from '@nestjs/common';
+import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  BearerAuthGuard,
+  type AuthenticatedRequest,
+} from '../auth/bearer-auth.guard';
 import {
   parseAgeGateInput,
   parseParentalAttestationInput,
-  type AgeGateInput,
-  type ParentalAttestationInput,
 } from './onboarding.schemas';
 import { OnboardingService } from './onboarding.service';
 
@@ -13,22 +13,29 @@ import { OnboardingService } from './onboarding.service';
 export class OnboardingController {
   constructor(private readonly onboardingService: OnboardingService) {}
 
+  @UseGuards(BearerAuthGuard)
   @Post('age-gate')
-  async submitAgeGate(@Body() payload: unknown) {
-    const input: AgeGateInput = parseAgeGateInput(payload);
+  async submitAgeGate(
+    @Body() payload: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const input = parseAgeGateInput(payload);
 
     return {
-      data: await this.onboardingService.submitAgeGate(input),
+      data: await this.onboardingService.submitAgeGate(
+        request.authUser.id,
+        input,
+      ),
     };
   }
 
+  @UseGuards(BearerAuthGuard)
   @Post('parental-attestation')
   async submitParentalAttestation(
     @Body() payload: unknown,
-    @Req() request: Request,
+    @Req() request: AuthenticatedRequest,
   ) {
-    const input: ParentalAttestationInput =
-      parseParentalAttestationInput(payload);
+    const input = parseParentalAttestationInput(payload);
     const forwardedForHeader = request.headers['x-forwarded-for'];
     const forwardedForIp =
       typeof forwardedForHeader === 'string'
@@ -41,10 +48,14 @@ export class OnboardingController {
       typeof userAgentHeader === 'string' ? userAgentHeader : null;
 
     return {
-      data: await this.onboardingService.submitParentalAttestation(input, {
-        ipAddress,
-        userAgent,
-      }),
+      data: await this.onboardingService.submitParentalAttestation(
+        request.authUser.id,
+        input,
+        {
+          ipAddress,
+          userAgent,
+        },
+      ),
     };
   }
 }

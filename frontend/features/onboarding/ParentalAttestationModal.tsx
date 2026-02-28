@@ -8,7 +8,7 @@ import {
 
 type ParentalAttestationModalProps = {
   isOpen: boolean;
-  userId: string;
+  accessToken: string;
   onClose: () => void;
   onSuccess: (result: ParentalAttestationResult) => void;
 };
@@ -18,7 +18,7 @@ const INTERIM_PARENTAL_ATTESTATION_COPY =
 
 export function ParentalAttestationModal({
   isOpen,
-  userId,
+  accessToken,
   onClose,
   onSuccess,
 }: ParentalAttestationModalProps) {
@@ -54,8 +54,7 @@ export function ParentalAttestationModal({
     setErrorMessage(null);
 
     try {
-      const result = await submitParentalAttestation({
-        userId,
+      const result = await submitParentalAttestation(accessToken, {
         parentEmail,
         parentFullName,
         relationshipToChild,

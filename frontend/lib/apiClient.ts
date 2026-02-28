@@ -41,8 +41,6 @@ export type LoginResult = {
 };
 
 export type ChangeEmailRequest = {
-  userId: string;
-  currentEmail: string;
   newEmail: string;
   password: string;
 };
@@ -71,7 +69,6 @@ export type UpdateMyContentPreferencesRequest = {
 };
 
 export type AgeGateRequest = {
-  userId: string;
   birthdate: string;
   countryCode: string;
 };
@@ -84,7 +81,6 @@ export type AgeGateResult = {
 };
 
 export type ParentalAttestationRequest = {
-  userId: string;
   parentEmail: string;
   parentFullName: string;
   relationshipToChild: string;
@@ -213,6 +209,7 @@ export async function updateMyContentPreferences(
 }
 
 export async function changeEmailWithPassword(
+  accessToken: string,
   payload: ChangeEmailRequest,
 ): Promise<ChangeEmailResult> {
   const response = await requestJson<ApiEnvelope<ChangeEmailResult>>(
@@ -221,6 +218,7 @@ export async function changeEmailWithPassword(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${readBearerTokenOrThrow(accessToken)}`,
       },
       body: JSON.stringify(payload),
     },
@@ -230,6 +228,7 @@ export async function changeEmailWithPassword(
 }
 
 export async function submitAgeGate(
+  accessToken: string,
   payload: AgeGateRequest,
 ): Promise<AgeGateResult> {
   const response = await requestJson<ApiEnvelope<AgeGateResult>>(
@@ -238,6 +237,7 @@ export async function submitAgeGate(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${readBearerTokenOrThrow(accessToken)}`,
       },
       body: JSON.stringify(payload),
     },
@@ -247,6 +247,7 @@ export async function submitAgeGate(
 }
 
 export async function submitParentalAttestation(
+  accessToken: string,
   payload: ParentalAttestationRequest,
 ): Promise<ParentalAttestationResult> {
   const response = await requestJson<ApiEnvelope<ParentalAttestationResult>>(
@@ -255,6 +256,7 @@ export async function submitParentalAttestation(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${readBearerTokenOrThrow(accessToken)}`,
       },
       body: JSON.stringify(payload),
     },

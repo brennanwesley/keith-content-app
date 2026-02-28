@@ -38,27 +38,15 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Password is required.').max(128),
 });
 
-const changeEmailSchema = z
-  .object({
-    userId: z.string().uuid('Invalid user ID.'),
-    currentEmail: z
-      .string()
-      .trim()
-      .email('Enter a valid current email address.')
-      .max(320)
-      .transform((value) => value.toLowerCase()),
-    newEmail: z
-      .string()
-      .trim()
-      .email('Enter a valid new email address.')
-      .max(320)
-      .transform((value) => value.toLowerCase()),
-    password: z.string().min(1, 'Password is required.').max(128),
-  })
-  .refine((value) => value.currentEmail !== value.newEmail, {
-    message: 'New email must be different from current email.',
-    path: ['newEmail'],
-  });
+const changeEmailSchema = z.object({
+  newEmail: z
+    .string()
+    .trim()
+    .email('Enter a valid new email address.')
+    .max(320)
+    .transform((value) => value.toLowerCase()),
+  password: z.string().min(1, 'Password is required.').max(128),
+});
 
 export type SignupInput = z.infer<typeof signupSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
