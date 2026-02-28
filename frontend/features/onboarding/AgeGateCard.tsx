@@ -15,26 +15,19 @@ type AgeGateCardProps = {
 
 export function AgeGateCard({ userId }: AgeGateCardProps) {
   const [birthdate, setBirthdate] = useState("");
-  const [countryCode, setCountryCode] = useState("US");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [result, setResult] = useState<AgeGateResult | null>(null);
   const [attestationResult, setAttestationResult] =
     useState<ParentalAttestationResult | null>(null);
   const [isParentalModalOpen, setIsParentalModalOpen] = useState(false);
+  const hasDirectAccess = result?.nextStep === "direct_access";
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!birthdate) {
       setErrorMessage("Birthdate is required.");
-      return;
-    }
-
-    const normalizedCountryCode = countryCode.trim().toUpperCase();
-
-    if (normalizedCountryCode.length !== 2) {
-      setErrorMessage("Country code must be exactly 2 letters (example: US).");
       return;
     }
 
@@ -45,7 +38,7 @@ export function AgeGateCard({ userId }: AgeGateCardProps) {
       const ageGateResult = await submitAgeGate({
         userId,
         birthdate,
-        countryCode: normalizedCountryCode,
+        countryCode: "US",
       });
 
       setResult(ageGateResult);
@@ -71,10 +64,11 @@ export function AgeGateCard({ userId }: AgeGateCardProps) {
       </h2>
       <p className="mt-1 text-sm text-foreground/75">
         We use this to route 13+ users to direct access and under-13 users to parent consent.
+        Region is currently assumed as US for this step.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-4 space-y-3">
-        <label className="block space-y-1">
+        <label className="block w-full max-w-full space-y-1 overflow-hidden">
           <span className="text-sm font-semibold text-foreground/85">Birthdate</span>
           <input
             type="date"
@@ -82,22 +76,8 @@ export function AgeGateCard({ userId }: AgeGateCardProps) {
             onChange={(event) => {
               setBirthdate(event.target.value);
             }}
-            className="block w-full min-w-0 rounded-xl border border-white/15 bg-surface-soft/85 px-3 py-2 text-sm outline-none transition focus:border-brand/70"
-            required
-          />
-        </label>
-
-        <label className="block space-y-1">
-          <span className="text-sm font-semibold text-foreground/85">Country code</span>
-          <input
-            type="text"
-            value={countryCode}
-            onChange={(event) => {
-              setCountryCode(event.target.value);
-            }}
-            className="block w-full min-w-0 rounded-xl border border-white/15 bg-surface-soft/85 px-3 py-2 text-sm uppercase outline-none transition focus:border-brand/70"
-            maxLength={2}
-            minLength={2}
+            disabled={isSubmitting || hasDirectAccess}
+            className="block h-11 w-full max-w-[16rem] min-w-0 rounded-xl border border-white/15 bg-surface-soft/85 px-3 py-2 text-sm outline-none transition focus:border-brand/70 disabled:cursor-not-allowed disabled:opacity-75"
             required
           />
         </label>
@@ -110,10 +90,14 @@ export function AgeGateCard({ userId }: AgeGateCardProps) {
 
         <button
           type="submit"
-          disabled={isSubmitting}
-          className="inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-accent to-brand px-4 py-2.5 text-sm font-extrabold text-background transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={isSubmitting || hasDirectAccess}
+          className={`inline-flex w-full items-center justify-center rounded-xl px-4 py-2.5 text-sm font-extrabold transition disabled:cursor-not-allowed disabled:opacity-75 ${
+            hasDirectAccess
+              ? "border border-brand/35 bg-brand/20 text-brand-muted"
+              : "bg-gradient-to-r from-accent to-brand text-background hover:brightness-110"
+          }`}
         >
-          {isSubmitting ? "Checking..." : "Verify Age"}
+          {isSubmitting ? "Checking..." : hasDirectAccess ? "Age verified" : "Verify Age"}
         </button>
       </form>
 
@@ -126,9 +110,10 @@ export function AgeGateCard({ userId }: AgeGateCardProps) {
               </p>
               <Link
                 href="/content"
-                className="inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-accent to-brand px-4 py-3 text-base font-extrabold text-background transition hover:brightness-110"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-accent to-brand px-4 py-3 text-base font-extrabold text-background transition hover:brightness-110"
               >
                 Continue to content selection
+                <span aria-hidden>→</span>
               </Link>
             </div>
           ) : (

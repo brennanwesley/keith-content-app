@@ -49,6 +49,26 @@ function getPasswordRuleMessage(password: string): string | null {
   return null;
 }
 
+function getUsernameRuleMessage(username: string): string | null {
+  if (username.length < 3) {
+    return "Username must be at least 3 characters.";
+  }
+
+  if (username.length > 32) {
+    return "Username must be at most 32 characters.";
+  }
+
+  if (/\s/.test(username)) {
+    return "Username cannot contain spaces. Use letters, numbers, and underscores only.";
+  }
+
+  if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+    return "Username can contain only letters, numbers, and underscores.";
+  }
+
+  return null;
+}
+
 export function AuthScreen() {
   const [mode, setMode] = useState<AuthMode>("signup");
   const [formState, setFormState] = useState<FormState>(initialFormState);
@@ -70,6 +90,10 @@ export function AuthScreen() {
           },
     [mode],
   );
+  const usernameInlineError =
+    mode === "signup" && formState.username
+      ? getUsernameRuleMessage(formState.username)
+      : null;
 
   const handleModeChange = (nextMode: AuthMode) => {
     setMode(nextMode);
@@ -98,6 +122,13 @@ export function AuthScreen() {
     if (mode === "signup") {
       if (!username) {
         setOutcome({ type: "error", message: "Username is required." });
+        return;
+      }
+
+      const usernameMessage = getUsernameRuleMessage(formState.username);
+
+      if (usernameMessage) {
+        setOutcome({ type: "error", message: usernameMessage });
         return;
       }
 
@@ -231,10 +262,19 @@ export function AuthScreen() {
                 className="w-full rounded-2xl border border-white/15 bg-surface-soft/80 px-4 py-3 text-base outline-none transition focus:border-brand/70"
                 placeholder="your_username"
                 autoComplete="username"
+                pattern="[A-Za-z0-9_]{3,32}"
+                title="3-32 characters. Use letters, numbers, and underscores only. No spaces."
                 minLength={3}
                 maxLength={32}
                 required
               />
+              <p
+                className={`text-xs ${
+                  usernameInlineError ? "text-accent-strong" : "text-foreground/65"
+                }`}
+              >
+                {usernameInlineError ?? "Use 3-32 characters: letters, numbers, and underscores only (no spaces)."}
+              </p>
             </label>
           ) : null}
 
