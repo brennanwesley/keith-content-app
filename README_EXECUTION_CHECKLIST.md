@@ -61,15 +61,15 @@ Use it with `README_BUILD_PLAN.md` as the strategy source of truth.
 - [x] Add feed header icon/button → settings page.
 - [x] Edge case fallback: if an existing account is missing age-gate completion, require one-time age gate before feed.
 #### Phase 2 — Enable real preferences
-- [ ] DB migration for user_content_preferences + RLS.
-- [ ] Backend endpoints:
-- [ ] GET /v1/content-types
-- [ ] GET /v1/me/content-preferences
-- [ ] PUT /v1/me/content-preferences
-- [ ] Settings page tabs:
-- [ ] Content Types
-- [ ] Account Profile (reuse password re-auth change-email flow)
-- [ ] Parent/Guardian Link (MVP placeholder + status first)
+- [x] DB migration for user_content_preferences + RLS.
+- [x] Backend endpoints:
+- [x] GET /v1/content-types
+- [x] GET /v1/me/content-preferences
+- [x] PUT /v1/me/content-preferences
+- [x] Settings page tabs:
+- [x] Content Types
+- [x] Account Profile (reuse password re-auth change-email flow)
+- [x] Parent/Guardian Link (MVP placeholder + status first)
 #### Phase 3 — Security hardening + audit
 - [ ] Protect sensitive endpoints with authenticated user context.
 - [ ] Stop trusting userId from client body for protected writes (derive from auth token).

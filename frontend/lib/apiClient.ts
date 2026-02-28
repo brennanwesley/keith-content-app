@@ -53,6 +53,23 @@ export type ChangeEmailResult = {
   emailVerified: boolean;
 };
 
+export type ContentTypeSummary = {
+  id: string;
+  slug: string;
+  name: string;
+  isActive: boolean;
+};
+
+export type MyContentPreferencesResult = {
+  userId: string;
+  selectedContentTypeIds: string[];
+  selectedContentTypes: ContentTypeSummary[];
+};
+
+export type UpdateMyContentPreferencesRequest = {
+  contentTypeIds: string[];
+};
+
 export type AgeGateRequest = {
   userId: string;
   birthdate: string;
@@ -119,6 +136,16 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
+function readBearerTokenOrThrow(accessToken: string): string {
+  const trimmedToken = accessToken.trim();
+
+  if (!trimmedToken) {
+    throw new Error('Access token is required for this request.');
+  }
+
+  return trimmedToken;
+}
+
 export async function getBackendHealth(): Promise<BackendHealthResponse> {
   return requestJson<BackendHealthResponse>('/health', {
     cache: 'no-store',
@@ -135,6 +162,52 @@ export async function signupWithEmail(
     },
     body: JSON.stringify(payload),
   });
+
+  return response.data;
+}
+
+export async function getContentTypes(): Promise<ContentTypeSummary[]> {
+  const response = await requestJson<ApiEnvelope<ContentTypeSummary[]>>(
+    '/v1/content-types',
+    {
+      cache: 'no-store',
+    },
+  );
+
+  return response.data;
+}
+
+export async function getMyContentPreferences(
+  accessToken: string,
+): Promise<MyContentPreferencesResult> {
+  const response = await requestJson<ApiEnvelope<MyContentPreferencesResult>>(
+    '/v1/me/content-preferences',
+    {
+      cache: 'no-store',
+      headers: {
+        Authorization: `Bearer ${readBearerTokenOrThrow(accessToken)}`,
+      },
+    },
+  );
+
+  return response.data;
+}
+
+export async function updateMyContentPreferences(
+  accessToken: string,
+  payload: UpdateMyContentPreferencesRequest,
+): Promise<MyContentPreferencesResult> {
+  const response = await requestJson<ApiEnvelope<MyContentPreferencesResult>>(
+    '/v1/me/content-preferences',
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${readBearerTokenOrThrow(accessToken)}`,
+      },
+      body: JSON.stringify(payload),
+    },
+  );
 
   return response.data;
 }

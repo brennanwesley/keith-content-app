@@ -2,6 +2,15 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import {
+  clearAuthSession,
+  readAuthSession,
+  saveAuthSession,
+  type StoredAuthSession,
+} from "@/lib/authSession";
+import { AccountProfileTab } from "./AccountProfileTab";
+import { ContentPreferencesTab } from "./ContentPreferencesTab";
+import { ParentLinkTab } from "./ParentLinkTab";
 
 type SettingsTab = "content" | "account" | "parent";
 
@@ -13,6 +22,20 @@ const tabLabels: Record<SettingsTab, string> = {
 
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("content");
+  const [authSession, setAuthSession] = useState<StoredAuthSession | null>(() =>
+    readAuthSession(),
+  );
+  const isSessionReady = true;
+
+  const handleSessionUpdated = (nextSession: StoredAuthSession) => {
+    setAuthSession(nextSession);
+    saveAuthSession(nextSession);
+  };
+
+  const handleSignOut = () => {
+    clearAuthSession();
+    setAuthSession(null);
+  };
 
   return (
     <main className="min-h-[100dvh] px-5 py-6 sm:px-8">
@@ -54,24 +77,26 @@ export function SettingsPage() {
 
         <article className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-foreground/80">
           {activeTab === "content" ? (
-            <p>
-              Content type preference controls land in Phase 2. This tab is where learners will add
-              and remove feed topics.
-            </p>
+            <ContentPreferencesTab
+              authSession={authSession}
+              isSessionReady={isSessionReady}
+            />
           ) : null}
 
           {activeTab === "account" ? (
-            <p>
-              Account credential updates (including password-confirmed sensitive changes) will live
-              here.
-            </p>
+            <AccountProfileTab
+              authSession={authSession}
+              isSessionReady={isSessionReady}
+              onSessionUpdated={handleSessionUpdated}
+              onSignOut={handleSignOut}
+            />
           ) : null}
 
           {activeTab === "parent" ? (
-            <p>
-              Parent/guardian linking and relationship status management will be managed from this
-              tab.
-            </p>
+            <ParentLinkTab
+              authSession={authSession}
+              isSessionReady={isSessionReady}
+            />
           ) : null}
         </article>
 

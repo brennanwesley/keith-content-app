@@ -11,6 +11,7 @@ import {
   signupWithEmail,
   type SignupResult,
 } from "@/lib/apiClient";
+import { saveAuthSession } from "@/lib/authSession";
 import { AgeGateCard } from "@/features/onboarding/AgeGateCard";
 
 type AuthMode = "signup" | "login";
@@ -170,18 +171,17 @@ export function AuthScreen() {
         password: emailChangeState.password,
       });
 
-      setLoginSession((currentSession) =>
-        currentSession
-          ? {
-              ...currentSession,
-              user: {
-                ...currentSession.user,
-                email: changeResult.email,
-                emailVerified: changeResult.emailVerified,
-              },
-            }
-          : currentSession,
-      );
+      const updatedSession = {
+        ...loginSession,
+        user: {
+          ...loginSession.user,
+          email: changeResult.email,
+          emailVerified: changeResult.emailVerified,
+        },
+      };
+
+      setLoginSession(updatedSession);
+      saveAuthSession(updatedSession);
 
       setFormState((currentState) => ({
         ...currentState,
@@ -274,6 +274,7 @@ export function AuthScreen() {
 
       const loginResult = await loginWithEmail({ email, password });
       setLoginSession(loginResult);
+      saveAuthSession(loginResult);
       setEmailChangeOutcome(null);
       setEmailChangeState(initialEmailChangeState);
       setFormState((currentState) => ({
