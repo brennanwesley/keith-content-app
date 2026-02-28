@@ -65,10 +65,7 @@ export function AgeGateCard({ userId }: AgeGateCardProps) {
   };
 
   return (
-    <article className="mt-6 rounded-2xl border border-brand/25 bg-black/35 p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-muted">
-        Step 2.2 Age Gate
-      </p>
+    <article className="mt-6 overflow-hidden rounded-2xl border border-brand/25 bg-black/35 p-4">
       <h2 className="mt-2 text-lg font-bold text-foreground">
         Confirm learner age
       </h2>
@@ -85,7 +82,7 @@ export function AgeGateCard({ userId }: AgeGateCardProps) {
             onChange={(event) => {
               setBirthdate(event.target.value);
             }}
-            className="w-full rounded-xl border border-white/15 bg-surface-soft/85 px-3 py-2 text-sm outline-none transition focus:border-brand/70"
+            className="block w-full min-w-0 rounded-xl border border-white/15 bg-surface-soft/85 px-3 py-2 text-sm outline-none transition focus:border-brand/70"
             required
           />
         </label>
@@ -98,7 +95,7 @@ export function AgeGateCard({ userId }: AgeGateCardProps) {
             onChange={(event) => {
               setCountryCode(event.target.value);
             }}
-            className="w-full rounded-xl border border-white/15 bg-surface-soft/85 px-3 py-2 text-sm uppercase outline-none transition focus:border-brand/70"
+            className="block w-full min-w-0 rounded-xl border border-white/15 bg-surface-soft/85 px-3 py-2 text-sm uppercase outline-none transition focus:border-brand/70"
             maxLength={2}
             minLength={2}
             required
@@ -116,26 +113,24 @@ export function AgeGateCard({ userId }: AgeGateCardProps) {
           disabled={isSubmitting}
           className="inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-accent to-brand px-4 py-2.5 text-sm font-extrabold text-background transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isSubmitting ? "Checking..." : "Submit age gate"}
+          {isSubmitting ? "Checking..." : "Verify Age"}
         </button>
       </form>
 
       {result ? (
         <div className="mt-4 rounded-xl border border-white/10 bg-surface-soft/55 p-3 text-sm text-foreground/80">
-          <p>
-            Calculated age: <span className="font-semibold text-foreground">{result.calculatedAge}</span>
-          </p>
-          <p className="mt-1">
-            Decision: <span className="font-semibold text-foreground">{result.nextStep}</span>
-          </p>
-
           {result.nextStep === "direct_access" ? (
-            <Link
-              href="/content"
-              className="mt-3 inline-flex text-sm font-semibold text-brand-muted hover:text-accent-strong"
-            >
-              Continue to content selection →
-            </Link>
+            <div className="space-y-3">
+              <p className="rounded-xl border border-brand/35 bg-brand/10 px-3 py-2 text-base font-bold text-brand-muted">
+                Access Granted!
+              </p>
+              <Link
+                href="/content"
+                className="inline-flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-accent to-brand px-4 py-3 text-base font-extrabold text-background transition hover:brightness-110"
+              >
+                Continue to content selection
+              </Link>
+            </div>
           ) : (
             <div className="mt-2 space-y-2">
               {attestationResult ? (

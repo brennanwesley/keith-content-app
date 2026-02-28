@@ -182,9 +182,10 @@ export function YouthHockeyFeed() {
             <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 pt-[max(1rem,env(safe-area-inset-top))]">
               <Link
                 href="/content"
-                className="pointer-events-auto rounded-full border border-brand/45 bg-black/55 px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-brand-muted"
+                aria-label="Back to content selection"
+                className="pointer-events-auto inline-flex size-9 items-center justify-center rounded-full border border-brand/45 bg-black/55 text-lg font-bold text-brand-muted transition hover:border-accent/50 hover:text-white"
               >
-                Topics
+                <span aria-hidden>←</span>
               </Link>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent/90">
                 Youth Hockey

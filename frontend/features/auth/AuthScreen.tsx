@@ -61,12 +61,10 @@ export function AuthScreen() {
     () =>
       mode === "signup"
         ? {
-            title: "Create your learner account",
             subtitle: "Start with email, username, and password.",
             cta: "Create account",
           }
         : {
-            title: "Log in",
             subtitle: "Use your email and password to continue.",
             cta: "Log in",
           },
@@ -164,11 +162,8 @@ export function AuthScreen() {
     <main className="min-h-[100dvh] px-5 py-6 sm:px-8">
       <section className="mx-auto flex min-h-[calc(100dvh-3rem)] w-full max-w-md flex-col rounded-3xl border border-white/10 bg-surface/95 p-6 shadow-[0_24px_80px_-36px_rgba(37,244,238,0.45)] ring-1 ring-brand/20 backdrop-blur-sm sm:p-8">
         <header>
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-muted">
-            Day 2.1 foundation
-          </p>
-          <h1 className="font-brand mt-3 bg-gradient-to-r from-foreground via-brand-muted to-accent bg-clip-text text-3xl text-transparent">
-            {headingCopy.title}
+          <h1 className="font-brand bg-gradient-to-r from-foreground via-brand-muted to-accent bg-clip-text text-3xl text-transparent">
+            Create Your Account
           </h1>
           <p className="mt-3 text-sm leading-6 text-foreground/80">{headingCopy.subtitle}</p>
         </header>
