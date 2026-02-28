@@ -6,12 +6,18 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
-import type { LoginInput, SignupInput } from './auth.schemas';
+import type { ChangeEmailInput, LoginInput, SignupInput } from './auth.schemas';
 
 export type SignupResult = {
   userId: string;
   email: string;
   requiresEmailVerification: boolean;
+};
+
+export type ChangeEmailResult = {
+  userId: string;
+  email: string;
+  emailVerified: boolean;
 };
 
 export type LoginResult = {
@@ -37,7 +43,7 @@ export class AuthService {
       await client.auth.admin.createUser({
         email: input.email,
         password: input.password,
-        email_confirm: false,
+        email_confirm: true,
       });
 
     if (createUserError) {
@@ -76,7 +82,56 @@ export class AuthService {
     return {
       userId,
       email: input.email,
-      requiresEmailVerification: true,
+      requiresEmailVerification: false,
+    };
+  }
+
+  async changeEmail(input: ChangeEmailInput): Promise<ChangeEmailResult> {
+    const client = this.getClientOrThrow();
+
+    const currentEmail = input.currentEmail.trim().toLowerCase();
+    const newEmail = input.newEmail.trim().toLowerCase();
+
+    const { data: reauthData, error: reauthError } =
+      await client.auth.signInWithPassword({
+        email: currentEmail,
+        password: input.password,
+      });
+
+    if (reauthError || !reauthData.user || !reauthData.session) {
+      throw new UnauthorizedException('Current password is incorrect.');
+    }
+
+    if (reauthData.user.id !== input.userId) {
+      throw new UnauthorizedException('Current password is incorrect.');
+    }
+
+    const { data: updatedUserData, error: updateUserError } =
+      await client.auth.admin.updateUserById(input.userId, {
+        email: newEmail,
+        email_confirm: true,
+      });
+
+    if (updateUserError) {
+      if (this.isEmailTakenError(updateUserError.message)) {
+        throw new ConflictException('Email is already registered.');
+      }
+
+      throw new InternalServerErrorException('Failed to update email.');
+    }
+
+    const updatedEmail = updatedUserData.user?.email;
+
+    if (!updatedEmail) {
+      throw new InternalServerErrorException(
+        'Auth provider did not return updated email.',
+      );
+    }
+
+    return {
+      userId: input.userId,
+      email: updatedEmail,
+      emailVerified: Boolean(updatedUserData.user?.email_confirmed_at),
     };
   }
 

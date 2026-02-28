@@ -38,8 +38,31 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Password is required.').max(128),
 });
 
+const changeEmailSchema = z
+  .object({
+    userId: z.string().uuid('Invalid user ID.'),
+    currentEmail: z
+      .string()
+      .trim()
+      .email('Enter a valid current email address.')
+      .max(320)
+      .transform((value) => value.toLowerCase()),
+    newEmail: z
+      .string()
+      .trim()
+      .email('Enter a valid new email address.')
+      .max(320)
+      .transform((value) => value.toLowerCase()),
+    password: z.string().min(1, 'Password is required.').max(128),
+  })
+  .refine((value) => value.currentEmail !== value.newEmail, {
+    message: 'New email must be different from current email.',
+    path: ['newEmail'],
+  });
+
 export type SignupInput = z.infer<typeof signupSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+export type ChangeEmailInput = z.infer<typeof changeEmailSchema>;
 
 export function parseSignupInput(payload: unknown): SignupInput {
   const parsed = signupSchema.safeParse(payload);
@@ -47,6 +70,19 @@ export function parseSignupInput(payload: unknown): SignupInput {
   if (!parsed.success) {
     throw new BadRequestException({
       message: 'Invalid signup payload.',
+      errors: parsed.error.flatten().fieldErrors,
+    });
+  }
+
+  return parsed.data;
+}
+
+export function parseChangeEmailInput(payload: unknown): ChangeEmailInput {
+  const parsed = changeEmailSchema.safeParse(payload);
+
+  if (!parsed.success) {
+    throw new BadRequestException({
+      message: 'Invalid change-email payload.',
       errors: parsed.error.flatten().fieldErrors,
     });
   }

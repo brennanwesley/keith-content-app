@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
+  changeEmailWithPassword,
+  type ChangeEmailResult,
   loginWithEmail,
   type LoginResult,
   signupWithEmail,
@@ -23,9 +25,19 @@ type AuthOutcome = {
   message: string;
 };
 
+type EmailChangeState = {
+  newEmail: string;
+  password: string;
+};
+
 const initialFormState: FormState = {
   email: "",
   username: "",
+  password: "",
+};
+
+const initialEmailChangeState: EmailChangeState = {
+  newEmail: "",
   password: "",
 };
 
@@ -76,6 +88,10 @@ export function AuthScreen() {
   const [outcome, setOutcome] = useState<AuthOutcome | null>(null);
   const [loginSession, setLoginSession] = useState<LoginResult | null>(null);
   const [ageGateUserId, setAgeGateUserId] = useState<string | null>(null);
+  const [emailChangeState, setEmailChangeState] =
+    useState<EmailChangeState>(initialEmailChangeState);
+  const [emailChangeOutcome, setEmailChangeOutcome] = useState<AuthOutcome | null>(null);
+  const [isChangingEmail, setIsChangingEmail] = useState(false);
 
   const headingCopy = useMemo(
     () =>
@@ -100,6 +116,91 @@ export function AuthScreen() {
     setOutcome(null);
     setLoginSession(null);
     setAgeGateUserId(null);
+    setEmailChangeState(initialEmailChangeState);
+    setEmailChangeOutcome(null);
+  };
+
+  const handleEmailChangeSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!loginSession) {
+      setEmailChangeOutcome({
+        type: "error",
+        message: "You need an active login session before changing email.",
+      });
+      return;
+    }
+
+    const currentEmail = loginSession.user.email.trim().toLowerCase();
+    const newEmail = emailChangeState.newEmail.trim().toLowerCase();
+
+    if (!newEmail) {
+      setEmailChangeOutcome({ type: "error", message: "New email is required." });
+      return;
+    }
+
+    if (newEmail === currentEmail) {
+      setEmailChangeOutcome({
+        type: "error",
+        message: "New email must be different from current email.",
+      });
+      return;
+    }
+
+    if (!emailChangeState.password) {
+      setEmailChangeOutcome({
+        type: "error",
+        message: "Current password is required to change email.",
+      });
+      return;
+    }
+
+    setIsChangingEmail(true);
+    setEmailChangeOutcome(null);
+
+    try {
+      const changeResult: ChangeEmailResult = await changeEmailWithPassword({
+        userId: loginSession.user.id,
+        currentEmail,
+        newEmail,
+        password: emailChangeState.password,
+      });
+
+      setLoginSession((currentSession) =>
+        currentSession
+          ? {
+              ...currentSession,
+              user: {
+                ...currentSession.user,
+                email: changeResult.email,
+                emailVerified: changeResult.emailVerified,
+              },
+            }
+          : currentSession,
+      );
+
+      setFormState((currentState) => ({
+        ...currentState,
+        email: changeResult.email,
+      }));
+
+      setEmailChangeState({
+        newEmail: "",
+        password: "",
+      });
+
+      setEmailChangeOutcome({
+        type: "success",
+        message: `Email updated to ${changeResult.email}.`,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unable to update email right now.";
+
+      setEmailChangeOutcome({ type: "error", message });
+    } finally {
+      setIsChangingEmail(false);
+    }
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -159,7 +260,7 @@ export function AuthScreen() {
 
         setOutcome({
           type: "success",
-          message: `Account created for ${signupResult.email}. Check email to verify your account.`,
+          message: `Account created for ${signupResult.email}.`,
         });
         setAgeGateUserId(signupResult.userId);
 
@@ -168,6 +269,8 @@ export function AuthScreen() {
 
       const loginResult = await loginWithEmail({ email, password });
       setLoginSession(loginResult);
+      setEmailChangeOutcome(null);
+      setEmailChangeState(initialEmailChangeState);
       setFormState((currentState) => ({
         ...currentState,
         email,
@@ -330,9 +433,72 @@ export function AuthScreen() {
             <p className="font-semibold text-foreground">Login session ready</p>
             <p className="mt-1">User ID: {loginSession.user.id}</p>
             <p className="mt-1">Email verified: {loginSession.user.emailVerified ? "yes" : "no"}</p>
-            <p className="mt-3 text-foreground/65">
-              Next phase will wire this token into protected API calls.
-            </p>
+
+            <form onSubmit={handleEmailChangeSubmit} className="mt-4 space-y-3">
+              <p className="rounded-xl border border-brand/25 bg-black/35 px-3 py-2 text-xs text-foreground/75">
+                To change email, re-enter your current password for confirmation.
+              </p>
+
+              <label className="block space-y-1">
+                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-foreground/70">
+                  New email
+                </span>
+                <input
+                  type="email"
+                  value={emailChangeState.newEmail}
+                  onChange={(event) => {
+                    setEmailChangeState((currentState) => ({
+                      ...currentState,
+                      newEmail: event.target.value,
+                    }));
+                  }}
+                  className="w-full rounded-xl border border-white/15 bg-surface-soft/80 px-3 py-2 text-sm outline-none transition focus:border-brand/70"
+                  placeholder="new-email@example.com"
+                  autoComplete="email"
+                  required
+                />
+              </label>
+
+              <label className="block space-y-1">
+                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-foreground/70">
+                  Current password
+                </span>
+                <input
+                  type="password"
+                  value={emailChangeState.password}
+                  onChange={(event) => {
+                    setEmailChangeState((currentState) => ({
+                      ...currentState,
+                      password: event.target.value,
+                    }));
+                  }}
+                  className="w-full rounded-xl border border-white/15 bg-surface-soft/80 px-3 py-2 text-sm outline-none transition focus:border-brand/70"
+                  placeholder="Enter current password"
+                  autoComplete="current-password"
+                  required
+                />
+              </label>
+
+              {emailChangeOutcome ? (
+                <p
+                  className={`rounded-xl border px-3 py-2 text-xs ${
+                    emailChangeOutcome.type === "success"
+                      ? "border-brand/35 bg-brand/10 text-brand-muted"
+                      : "border-accent/40 bg-accent/10 text-accent-strong"
+                  }`}
+                >
+                  {emailChangeOutcome.message}
+                </p>
+              ) : null}
+
+              <button
+                type="submit"
+                disabled={isChangingEmail}
+                className="inline-flex w-full items-center justify-center rounded-xl border border-brand/35 bg-brand/15 px-4 py-2 text-sm font-semibold text-brand-muted transition hover:border-accent/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isChangingEmail ? "Updating..." : "Update email"}
+              </button>
+            </form>
           </article>
         ) : null}
 

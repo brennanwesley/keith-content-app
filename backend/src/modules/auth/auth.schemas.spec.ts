@@ -1,5 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
-import { parseLoginInput, parseSignupInput } from './auth.schemas';
+import {
+  parseChangeEmailInput,
+  parseLoginInput,
+  parseSignupInput,
+} from './auth.schemas';
 
 describe('auth payload schemas', () => {
   it('accepts a valid signup payload', () => {
@@ -52,6 +56,33 @@ describe('auth payload schemas', () => {
       parseLoginInput({
         email: 'login@example.com',
         password: '',
+      }),
+    ).toThrow(BadRequestException);
+  });
+
+  it('accepts a valid change-email payload', () => {
+    const parsed = parseChangeEmailInput({
+      userId: '11111111-1111-4111-8111-111111111111',
+      currentEmail: 'CURRENT@Example.com',
+      newEmail: 'NEW@Example.com',
+      password: 'SecurePass10',
+    });
+
+    expect(parsed).toEqual({
+      userId: '11111111-1111-4111-8111-111111111111',
+      currentEmail: 'current@example.com',
+      newEmail: 'new@example.com',
+      password: 'SecurePass10',
+    });
+  });
+
+  it('rejects change-email payload when new email matches current email', () => {
+    expect(() =>
+      parseChangeEmailInput({
+        userId: '11111111-1111-4111-8111-111111111111',
+        currentEmail: 'user@example.com',
+        newEmail: 'user@example.com',
+        password: 'SecurePass10',
       }),
     ).toThrow(BadRequestException);
   });

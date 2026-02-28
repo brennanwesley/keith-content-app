@@ -68,7 +68,7 @@ export function AgeGateCard({ userId }: AgeGateCardProps) {
       </p>
 
       <form onSubmit={handleSubmit} className="mt-4 space-y-3">
-        <label className="block w-full max-w-full space-y-1 overflow-hidden">
+        <label className="block w-full max-w-full space-y-1">
           <span className="text-sm font-semibold text-foreground/85">Birthdate</span>
           <input
             type="date"
@@ -77,7 +77,8 @@ export function AgeGateCard({ userId }: AgeGateCardProps) {
               setBirthdate(event.target.value);
             }}
             disabled={isSubmitting || hasDirectAccess}
-            className="block h-11 w-full max-w-[16rem] min-w-0 rounded-xl border border-white/15 bg-surface-soft/85 px-3 py-2 text-sm outline-none transition focus:border-brand/70 disabled:cursor-not-allowed disabled:opacity-75"
+            className="block h-11 w-full min-w-0 max-w-full rounded-xl border border-white/15 bg-surface-soft/85 px-4 py-2.5 text-sm outline-none transition focus:border-brand/70 disabled:cursor-not-allowed disabled:opacity-75"
+            style={{ width: "100%", maxWidth: "100%" }}
             required
           />
         </label>

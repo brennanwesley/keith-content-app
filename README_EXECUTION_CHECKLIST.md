@@ -41,7 +41,7 @@ Use it with `README_BUILD_PLAN.md` as the strategy source of truth.
 - [x] 2.1 Implement signup/login with required fields.
 - [x] 2.2 Add age-gate decision flow (13+ vs under-13).
 - [x] 2.3 Implement interim under-13 parent/guardian attestation modal workflow (no email service yet).
-- [ ] 2.4 Enforce email verification gate for profile/settings access.
+- [x] 2.4 Enforce password re-authentication gate for email changes (interim replacement for email verification service).
 - [ ] 2.5 Capture consent status and consent timeline fields.
 
 ### Test and validation

@@ -39,6 +39,19 @@ export type LoginResult = {
   };
 };
 
+export type ChangeEmailRequest = {
+  userId: string;
+  currentEmail: string;
+  newEmail: string;
+  password: string;
+};
+
+export type ChangeEmailResult = {
+  userId: string;
+  email: string;
+  emailVerified: boolean;
+};
+
 export type AgeGateRequest = {
   userId: string;
   birthdate: string;
@@ -121,6 +134,23 @@ export async function signupWithEmail(
     },
     body: JSON.stringify(payload),
   });
+
+  return response.data;
+}
+
+export async function changeEmailWithPassword(
+  payload: ChangeEmailRequest,
+): Promise<ChangeEmailResult> {
+  const response = await requestJson<ApiEnvelope<ChangeEmailResult>>(
+    '/v1/auth/change-email',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    },
+  );
 
   return response.data;
 }

@@ -13,7 +13,7 @@ Based on your latest direction:
 
 1. Target audience includes users under 13 in the US.
 2. Use direct learner accounts now, with parent-linked accounts as a core capability.
-3. Email verification required for profile/settings access (not immediate playback gate for 13+ users).
+3. Email changes require password re-authentication (interim replacement for email verification service).
 4. Video provider: Mux.
 5. Build in-app admin panel for you to manage content and view platform data.
 6. Track watch history by content type tags.
@@ -47,7 +47,7 @@ Implement an age-gated signup decision tree:
 2. If user is 13+:
    - proceed with direct account flow
    - allow immediate content viewing after signup
-   - require email verification for profile/settings and account recovery
+   - require password re-authentication before any email change
 3. If user is under 13:
    - collect parent/guardian email
    - create child account in `pending_parent_consent`
@@ -208,7 +208,7 @@ Apply RLS to every user-owned table.
 1. Signup: email, username, password
 2. Basic onboarding step: choose content interests
 3. Enter feed quickly
-4. Profile/settings gated by email verification
+4. Email changes gated by password re-authentication
 
 ## Under-13 flow
 1. Age gate identifies under-13
