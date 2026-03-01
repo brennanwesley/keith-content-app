@@ -118,6 +118,8 @@ export function AccountProfileTab({
     return <p className="text-xs text-foreground/70">Checking account session...</p>;
   }
 
+  const isAdmin = authSession.user.accountType === "admin";
+
   return (
     <div className="space-y-4">
       <form onSubmit={handleEmailChange} className="space-y-3">
@@ -186,7 +188,15 @@ export function AccountProfileTab({
         </button>
       </form>
 
-      <ParentLinkSection authSession={authSession} />
+      {isAdmin ? (
+        <section className="rounded-2xl border border-white/12 bg-surface-soft/35 p-3">
+          <p className="text-sm text-foreground/80">
+            Parent-link and learner controls are disabled for admin accounts.
+          </p>
+        </section>
+      ) : (
+        <ParentLinkSection authSession={authSession} />
+      )}
     </div>
   );
 }
