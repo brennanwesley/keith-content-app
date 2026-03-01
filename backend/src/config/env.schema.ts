@@ -14,6 +14,7 @@ const envSchema = z
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
     MUX_TOKEN_ID: z.string().min(1).optional(),
     MUX_TOKEN_SECRET: z.string().min(1).optional(),
+    MUX_WEBHOOK_SIGNING_SECRET: z.string().min(1).optional(),
     CONSENT_POLICY_VERSION: z.string().min(1).default('v1'),
   })
   .refine(
@@ -33,6 +34,18 @@ const envSchema = z
     {
       message: 'MUX_TOKEN_ID and MUX_TOKEN_SECRET must both be set together.',
       path: ['MUX_TOKEN_ID'],
+    },
+  )
+  .refine(
+    (env) =>
+      env.NODE_ENV !== 'production' ||
+      !env.MUX_TOKEN_ID ||
+      (Boolean(env.MUX_TOKEN_SECRET) &&
+        Boolean(env.MUX_WEBHOOK_SIGNING_SECRET)),
+    {
+      message:
+        'MUX_WEBHOOK_SIGNING_SECRET is required in production when MUX credentials are configured.',
+      path: ['MUX_WEBHOOK_SIGNING_SECRET'],
     },
   )
   .refine(

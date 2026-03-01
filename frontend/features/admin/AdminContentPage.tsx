@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   createAdminVideo,
+  createMuxDirectUpload,
   getContentTypes,
   listAdminVideos,
   updateAdminVideo,
@@ -90,6 +91,10 @@ export function AdminContentPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmittingCreate, setIsSubmittingCreate] = useState(false);
   const [updatingVideoId, setUpdatingVideoId] = useState<string | null>(null);
+  const [uploadingVideoId, setUploadingVideoId] = useState<string | null>(null);
+  const [selectedUploadFileByVideoId, setSelectedUploadFileByVideoId] = useState<
+    Record<string, File | null>
+  >({});
   const [outcome, setOutcome] = useState<Outcome | null>(null);
 
   const isAdmin = authSession?.user.accountType === "admin";
@@ -103,6 +108,24 @@ export function AdminContentPage() {
     setContentTypes(availableContentTypes);
     setVideos(adminVideos);
     setManagedVideoDraftById(buildManagedDraftMap(adminVideos));
+  };
+
+  const refreshAdminData = async (accessToken: string) => {
+    setIsLoading(true);
+    setOutcome(null);
+
+    try {
+      await loadAdminData(accessToken);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to refresh admin data right now.";
+
+      setOutcome({ type: "error", message });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -305,6 +328,70 @@ export function AdminContentPage() {
     }
   };
 
+  const handleUploadVideoToMux = async (videoId: string) => {
+    if (!authSession || !isAdmin) {
+      setOutcome({
+        type: "error",
+        message: "Only admin accounts can upload videos to Mux.",
+      });
+      return;
+    }
+
+    const selectedFile = selectedUploadFileByVideoId[videoId] ?? null;
+
+    if (!selectedFile) {
+      setOutcome({
+        type: "error",
+        message: "Please choose an MP4 file before uploading to Mux.",
+      });
+      return;
+    }
+
+    setUploadingVideoId(videoId);
+    setOutcome(null);
+
+    try {
+      const directUpload = await createMuxDirectUpload(authSession.accessToken, {
+        videoId,
+        playbackPolicy: "public",
+      });
+
+      const uploadResponse = await fetch(directUpload.uploadUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": selectedFile.type || "application/octet-stream",
+        },
+        body: selectedFile,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`Mux upload failed with HTTP ${uploadResponse.status}.`);
+      }
+
+      setSelectedUploadFileByVideoId((currentSelection) => ({
+        ...currentSelection,
+        [videoId]: null,
+      }));
+
+      setOutcome({
+        type: "success",
+        message:
+          "Upload sent to Mux. Processing has started and status will update after webhook events arrive.",
+      });
+
+      await refreshAdminData(authSession.accessToken);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to upload this file to Mux right now.";
+
+      setOutcome({ type: "error", message });
+    } finally {
+      setUploadingVideoId(null);
+    }
+  };
+
   const handleSignOut = () => {
     clearAuthSession();
     setAuthSession(null);
@@ -373,19 +460,7 @@ export function AdminContentPage() {
                   return;
                 }
 
-                setIsLoading(true);
-                setOutcome(null);
-                void loadAdminData(authSession.accessToken)
-                  .catch((error: unknown) => {
-                    const message =
-                      error instanceof Error
-                        ? error.message
-                        : "Unable to refresh admin data right now.";
-                    setOutcome({ type: "error", message });
-                  })
-                  .finally(() => {
-                    setIsLoading(false);
-                  });
+                void refreshAdminData(authSession.accessToken);
               }}
               className="rounded-xl border border-white/15 px-3 py-2 text-xs font-semibold text-foreground/80 hover:text-foreground"
             >
@@ -576,6 +651,44 @@ export function AdminContentPage() {
                     <p className="mt-2 text-[11px] text-foreground/60">
                       Created: {formatDateTime(video.createdAt)} • Published: {formatDateTime(video.publishedAt)}
                     </p>
+
+                    <div className="mt-3 rounded-xl border border-white/10 bg-black/25 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground/75">
+                        Mux upload
+                      </p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <input
+                          type="file"
+                          accept="video/mp4"
+                          onChange={(event) => {
+                            const selectedFile = event.target.files?.[0] ?? null;
+                            setSelectedUploadFileByVideoId((currentSelection) => ({
+                              ...currentSelection,
+                              [video.id]: selectedFile,
+                            }));
+                          }}
+                          className="max-w-full text-xs text-foreground/75 file:mr-3 file:rounded-lg file:border file:border-white/20 file:bg-black/35 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-foreground/80"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void handleUploadVideoToMux(video.id);
+                          }}
+                          disabled={uploadingVideoId === video.id}
+                          className="rounded-xl border border-accent/35 bg-accent/15 px-3 py-2 text-xs font-semibold text-accent-strong transition hover:bg-accent/25 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {uploadingVideoId === video.id
+                            ? "Uploading..."
+                            : "Upload MP4 to Mux"}
+                        </button>
+                      </div>
+
+                      {selectedUploadFileByVideoId[video.id] ? (
+                        <p className="mt-2 text-[11px] text-foreground/65">
+                          Selected file: {selectedUploadFileByVideoId[video.id]?.name}
+                        </p>
+                      ) : null}
+                    </div>
 
                     <div className="mt-3 grid gap-3 md:grid-cols-[200px,1fr]">
                       <label className="space-y-1">

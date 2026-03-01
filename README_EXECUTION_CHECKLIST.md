@@ -148,8 +148,8 @@ Blockers:
 ### Build steps
 - [x] 4.1 Build admin content create/manage flow (admin video create/list/update API + frontend admin studio route shipped).
 - [x] 4.2 Enable multiple content-type tags per video in API/admin flows (join-table assignments now handled on create/update).
-- [ ] 4.3 Implement Mux direct upload flow (module/env scaffolding exists; upload APIs pending).
-- [ ] 4.4 Implement webhook handling for processing status updates.
+- [x] 4.3 Implement Mux direct upload flow (admin-authenticated `/v1/mux/uploads` + frontend file upload action to Mux direct URL).
+- [x] 4.4 Implement webhook handling for processing status updates (`/v1/mux/webhooks` signature verification + asset status persistence).
 - [ ] 4.5 Complete lifecycle handling (`draft -> processing -> ready`) in backend workflows.
 - [ ] 4.6 Dependency hardening: feed/video catalog IDs must come from backend (not static client IDs) to support reliable joins for watch history and analytics.
 

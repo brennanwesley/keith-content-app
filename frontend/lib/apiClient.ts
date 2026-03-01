@@ -198,6 +198,18 @@ export type ListAdminVideosQuery = {
   status?: VideoStatus;
 };
 
+export type CreateMuxDirectUploadRequest = {
+  videoId: string;
+  playbackPolicy?: 'public' | 'signed';
+};
+
+export type CreateMuxDirectUploadResult = {
+  videoId: string;
+  uploadId: string;
+  uploadUrl: string;
+  playbackPolicy: 'public' | 'signed';
+};
+
 export type WatchEventType =
   | 'play'
   | 'pause'
@@ -298,6 +310,25 @@ export async function signupWithEmail(
     },
     body: JSON.stringify(payload),
   });
+
+  return response.data;
+}
+
+export async function createMuxDirectUpload(
+  accessToken: string,
+  payload: CreateMuxDirectUploadRequest,
+): Promise<CreateMuxDirectUploadResult> {
+  const response = await requestJson<ApiEnvelope<CreateMuxDirectUploadResult>>(
+    '/v1/mux/uploads',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${readBearerTokenOrThrow(accessToken)}`,
+      },
+      body: JSON.stringify(payload),
+    },
+  );
 
   return response.data;
 }
