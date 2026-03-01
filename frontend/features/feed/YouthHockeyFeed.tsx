@@ -11,6 +11,12 @@ type YouthHockeyFeedProps = {
   settingsHref?: string;
 };
 
+type TapFeedbackState = {
+  icon: "play" | "pause";
+  panelIndex: number;
+  isVisible: boolean;
+};
+
 export function YouthHockeyFeed({
   backHref = "/content",
   settingsHref = "/settings",
@@ -18,10 +24,17 @@ export function YouthHockeyFeed({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const panelRefs = useRef<Array<HTMLElement | null>>([]);
   const videoRefs = useRef<Array<HTMLVideoElement | null>>([]);
+  const tapFeedbackFadeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const tapFeedbackClearTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const [activePanelIndex, setActivePanelIndex] = useState(0);
   const [needsTapToStart, setNeedsTapToStart] = useState(false);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  const [tapFeedback, setTapFeedback] = useState<TapFeedbackState | null>(null);
 
   useEffect(() => {
     const rootElement = containerRef.current;
@@ -64,6 +77,18 @@ export function YouthHockeyFeed({
 
     return () => {
       observer.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (tapFeedbackFadeTimeoutRef.current) {
+        clearTimeout(tapFeedbackFadeTimeoutRef.current);
+      }
+
+      if (tapFeedbackClearTimeoutRef.current) {
+        clearTimeout(tapFeedbackClearTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -141,6 +166,81 @@ export function YouthHockeyFeed({
     }
   };
 
+  const showTapFeedback = (
+    icon: TapFeedbackState["icon"],
+    panelIndex: number,
+  ) => {
+    if (tapFeedbackFadeTimeoutRef.current) {
+      clearTimeout(tapFeedbackFadeTimeoutRef.current);
+    }
+
+    if (tapFeedbackClearTimeoutRef.current) {
+      clearTimeout(tapFeedbackClearTimeoutRef.current);
+    }
+
+    setTapFeedback({
+      icon,
+      panelIndex,
+      isVisible: true,
+    });
+
+    tapFeedbackFadeTimeoutRef.current = setTimeout(() => {
+      setTapFeedback((current) => {
+        if (!current || current.panelIndex !== panelIndex) {
+          return current;
+        }
+
+        return {
+          ...current,
+          isVisible: false,
+        };
+      });
+    }, 180);
+
+    tapFeedbackClearTimeoutRef.current = setTimeout(() => {
+      setTapFeedback((current) => {
+        if (!current || current.panelIndex !== panelIndex) {
+          return current;
+        }
+
+        return null;
+      });
+    }, 520);
+  };
+
+  const handleVideoTap = async (panelIndex: number) => {
+    if (panelIndex !== activePanelIndex || panelIndex >= youthHockeyVideos.length) {
+      return;
+    }
+
+    const activeVideo = videoRefs.current[panelIndex];
+
+    if (!activeVideo) {
+      return;
+    }
+
+    setHasUserInteracted(true);
+
+    if (activeVideo.paused || activeVideo.ended) {
+      activeVideo.muted = false;
+      activeVideo.defaultMuted = false;
+
+      try {
+        await activeVideo.play();
+        setNeedsTapToStart(false);
+        showTapFeedback("play", panelIndex);
+      } catch {
+        setNeedsTapToStart(true);
+      }
+
+      return;
+    }
+
+    activeVideo.pause();
+    setNeedsTapToStart(false);
+    showTapFeedback("pause", panelIndex);
+  };
+
   const handleReplay = () => {
     const firstVideo = videoRefs.current[0];
 
@@ -177,6 +277,9 @@ export function YouthHockeyFeed({
               }}
               src={video.src}
               className="h-full w-full object-cover"
+              onClick={() => {
+                void handleVideoTap(index);
+              }}
               loop
               playsInline
               autoPlay
@@ -186,6 +289,18 @@ export function YouthHockeyFeed({
             />
 
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/72 via-black/10 to-black/82" />
+
+            {tapFeedback && tapFeedback.panelIndex === index ? (
+              <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
+                <div
+                  className={`flex size-20 items-center justify-center rounded-full border border-white/35 bg-black/55 text-4xl text-white shadow-[0_18px_38px_-24px_rgba(0,0,0,0.8)] backdrop-blur-sm transition-all duration-300 ${
+                    tapFeedback.isVisible ? "scale-100 opacity-100" : "scale-110 opacity-0"
+                  }`}
+                >
+                  <span aria-hidden>{tapFeedback.icon === "pause" ? "⏸" : "▶"}</span>
+                </div>
+              </div>
+            ) : null}
 
             <div className="absolute inset-x-0 top-0 z-10 grid grid-cols-[auto_1fr_auto] items-center gap-3 px-4 pt-[max(1rem,env(safe-area-inset-top))]">
               <Link
@@ -218,7 +333,7 @@ export function YouthHockeyFeed({
             </div>
 
             {needsTapToStart && index === activePanelIndex ? (
-              <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/45 px-6">
+              <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/45 px-6">
                 <button
                   type="button"
                   onClick={() => {
