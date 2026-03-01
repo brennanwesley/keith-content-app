@@ -146,8 +146,8 @@ Blockers:
 **Goal:** Enable reliable admin content ingestion and publishing lifecycle beyond schema scaffolding.
 
 ### Build steps
-- [ ] 4.1 Build admin content create/manage flow.
-- [ ] 4.2 Enable multiple content-type tags per video in API/admin flows (join-table schema already exists).
+- [x] 4.1 Build admin content create/manage flow (admin video create/list/update API + frontend admin studio route shipped).
+- [x] 4.2 Enable multiple content-type tags per video in API/admin flows (join-table assignments now handled on create/update).
 - [ ] 4.3 Implement Mux direct upload flow (module/env scaffolding exists; upload APIs pending).
 - [ ] 4.4 Implement webhook handling for processing status updates.
 - [ ] 4.5 Complete lifecycle handling (`draft -> processing -> ready`) in backend workflows.

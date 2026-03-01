@@ -152,6 +152,52 @@ export type ChildContentRestrictionsResult = {
   effectiveContentPreferences: EffectiveContentPreferencesResult;
 };
 
+export type VideoStatus =
+  | 'draft'
+  | 'processing'
+  | 'ready'
+  | 'blocked'
+  | 'archived';
+
+export type AdminVideoSummary = {
+  id: string;
+  title: string;
+  description: string | null;
+  status: VideoStatus;
+  ownerId: string | null;
+  durationSeconds: number | null;
+  thumbnailUrl: string | null;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  contentTypeIds: string[];
+  contentTypes: ContentTypeSummary[];
+};
+
+export type CreateAdminVideoRequest = {
+  title: string;
+  description?: string | null;
+  status?: VideoStatus;
+  durationSeconds?: number | null;
+  thumbnailUrl?: string | null;
+  publishedAt?: string | null;
+  contentTypeIds?: string[];
+};
+
+export type UpdateAdminVideoRequest = {
+  title?: string;
+  description?: string | null;
+  status?: VideoStatus;
+  durationSeconds?: number | null;
+  thumbnailUrl?: string | null;
+  publishedAt?: string | null;
+  contentTypeIds?: string[];
+};
+
+export type ListAdminVideosQuery = {
+  status?: VideoStatus;
+};
+
 export type WatchEventType =
   | 'play'
   | 'pause'
@@ -213,6 +259,19 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
+function toQueryString(query: Record<string, string | undefined>): string {
+  const searchParams = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(query)) {
+    if (value) {
+      searchParams.set(key, value);
+    }
+  }
+
+  const serialized = searchParams.toString();
+  return serialized ? `?${serialized}` : '';
+}
+
 function readBearerTokenOrThrow(accessToken: string): string {
   const trimmedToken = accessToken.trim();
 
@@ -239,6 +298,62 @@ export async function signupWithEmail(
     },
     body: JSON.stringify(payload),
   });
+
+  return response.data;
+}
+
+export async function listAdminVideos(
+  accessToken: string,
+  query?: ListAdminVideosQuery,
+): Promise<AdminVideoSummary[]> {
+  const response = await requestJson<ApiEnvelope<AdminVideoSummary[]>>(
+    `/v1/admin/videos${toQueryString({ status: query?.status })}`,
+    {
+      cache: 'no-store',
+      headers: {
+        Authorization: `Bearer ${readBearerTokenOrThrow(accessToken)}`,
+      },
+    },
+  );
+
+  return response.data;
+}
+
+export async function createAdminVideo(
+  accessToken: string,
+  payload: CreateAdminVideoRequest,
+): Promise<AdminVideoSummary> {
+  const response = await requestJson<ApiEnvelope<AdminVideoSummary>>(
+    '/v1/admin/videos',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${readBearerTokenOrThrow(accessToken)}`,
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  return response.data;
+}
+
+export async function updateAdminVideo(
+  accessToken: string,
+  videoId: string,
+  payload: UpdateAdminVideoRequest,
+): Promise<AdminVideoSummary> {
+  const response = await requestJson<ApiEnvelope<AdminVideoSummary>>(
+    `/v1/admin/videos/${encodeURIComponent(videoId)}`,
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${readBearerTokenOrThrow(accessToken)}`,
+      },
+      body: JSON.stringify(payload),
+    },
+  );
 
   return response.data;
 }

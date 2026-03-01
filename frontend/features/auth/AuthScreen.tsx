@@ -280,12 +280,19 @@ export function AuthScreen() {
         });
 
         if (bootstrapSession.user.accountType !== "learner") {
+          const accountRedirectPath =
+            bootstrapSession.user.accountType === "admin" ? "/admin" : "/settings";
+          const accountRedirectLabel =
+            bootstrapSession.user.accountType === "admin"
+              ? "admin content controls"
+              : "account controls";
+
           setAgeGateUserId(null);
           setOutcome({
             type: "success",
-            message: `Account created for ${signupResult.email}. Redirecting to account controls...`,
+            message: `Account created for ${signupResult.email}. Redirecting to ${accountRedirectLabel}...`,
           });
-          router.push("/settings");
+          router.push(accountRedirectPath);
 
           return;
         }
@@ -308,12 +315,19 @@ export function AuthScreen() {
       }));
 
       if (loginResult.user.accountType !== "learner") {
+        const accountRedirectPath =
+          loginResult.user.accountType === "admin" ? "/admin" : "/settings";
+        const accountRedirectLabel =
+          loginResult.user.accountType === "admin"
+            ? "admin content controls"
+            : "account controls";
+
         setAgeGateUserId(null);
         setOutcome({
           type: "success",
-          message: `Welcome back, ${loginResult.user.email}. Redirecting to account controls...`,
+          message: `Welcome back, ${loginResult.user.email}. Redirecting to ${accountRedirectLabel}...`,
         });
-        router.push("/settings");
+        router.push(accountRedirectPath);
 
         return;
       }
