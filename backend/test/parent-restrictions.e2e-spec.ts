@@ -120,6 +120,7 @@ function clone<T>(value: T): T {
 function createInMemorySupabaseService() {
   const parentUserId = '11111111-1111-4111-8111-111111111111';
   const childUserId = '22222222-2222-4222-8222-222222222222';
+  const outsiderParentUserId = '44444444-4444-4444-8444-444444444444';
   const blockedContentTypeId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
   const allowedContentTypeId = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
 
@@ -138,6 +139,13 @@ function createInMemorySupabaseService() {
         email: 'learner@example.com',
       },
     ],
+    [
+      'token-outsider-parent',
+      {
+        id: outsiderParentUserId,
+        email: 'outsider-parent@example.com',
+      },
+    ],
   ]);
 
   const state: InMemoryState = {
@@ -153,6 +161,12 @@ function createInMemorySupabaseService() {
         username: 'learner_account',
         account_type: 'learner',
         email: 'learner@example.com',
+      },
+      {
+        id: outsiderParentUserId,
+        username: 'outsider_parent',
+        account_type: 'parent',
+        email: 'outsider-parent@example.com',
       },
     ],
     parentChildLinks: [
@@ -523,6 +537,7 @@ function createInMemorySupabaseService() {
   return {
     parentUserId,
     childUserId,
+    outsiderParentUserId,
     blockedContentTypeId,
     allowedContentTypeId,
     getServiceClient: () => serviceClient,
@@ -533,6 +548,7 @@ describe('Parent restriction override flow (e2e)', () => {
   let app: INestApplication<App>;
   let parentUserId: string;
   let childUserId: string;
+  let outsiderParentUserId: string;
   let blockedContentTypeId: string;
   let allowedContentTypeId: string;
 
@@ -540,6 +556,7 @@ describe('Parent restriction override flow (e2e)', () => {
     const inMemorySupabaseService = createInMemorySupabaseService();
     parentUserId = inMemorySupabaseService.parentUserId;
     childUserId = inMemorySupabaseService.childUserId;
+    outsiderParentUserId = inMemorySupabaseService.outsiderParentUserId;
     blockedContentTypeId = inMemorySupabaseService.blockedContentTypeId;
     allowedContentTypeId = inMemorySupabaseService.allowedContentTypeId;
 
@@ -608,5 +625,36 @@ describe('Parent restriction override flow (e2e)', () => {
       allowedContentTypeId,
     ]);
     expect(parsedEffectivePreferences.data.isParentRestricted).toBe(true);
+  });
+
+  it('forbids an unlinked parent from viewing or updating a learner restriction scope', async () => {
+    await request(app.getHttpServer())
+      .get(`/v1/parent/children/${childUserId}/content-restrictions`)
+      .set('Authorization', 'Bearer token-outsider-parent')
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .put(`/v1/parent/children/${childUserId}/content-restrictions`)
+      .set('Authorization', 'Bearer token-outsider-parent')
+      .send({ blockedContentTypeIds: [blockedContentTypeId] })
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .get(`/v1/parent/children/${outsiderParentUserId}/content-restrictions`)
+      .set('Authorization', 'Bearer token-parent')
+      .expect(403);
+  });
+
+  it('forbids learners from using parent-only child restriction endpoints', async () => {
+    await request(app.getHttpServer())
+      .get(`/v1/parent/children/${childUserId}/content-restrictions`)
+      .set('Authorization', 'Bearer token-child')
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .put(`/v1/parent/children/${childUserId}/content-restrictions`)
+      .set('Authorization', 'Bearer token-child')
+      .send({ blockedContentTypeIds: [blockedContentTypeId] })
+      .expect(403);
   });
 });

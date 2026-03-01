@@ -129,13 +129,16 @@ Use it with `README_BUILD_PLAN.md` as the strategy source of truth.
 - [x] 3.8 Add watch event contract + instrumentation bootstrap so data collection starts before full history UI.
 
 ### Test and validation
-- [ ] Parent can only access linked child data scope.
-- [ ] Learner preference changes are saved and reflected in feed filters.
-- [ ] Parent restrictions override learner preferences when conflicts exist.
+- [x] Parent can only access linked child data scope (covered by backend E2E: linked/unlinked and role-forbidden child restriction access cases).
+- [ ] Learner preference changes are saved and reflected in feed filters (deferred: feed filtering integration is staged for Day 4/5).
+- [x] Parent restrictions override learner preferences when conflicts exist (covered by backend E2E effective preference assertions).
 
 ### Daily sign-off
 - [ ] Day 3 acceptance criteria met.
-- [ ] Blockers documented.
+- [x] Blockers documented.
+
+Blockers:
+- Full "reflected in feed filters" validation depends on Day 4/5 feed filter integration work. Current Day 3 validation confirms preference persistence and effective preference contract only.
 
 ---
 
