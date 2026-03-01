@@ -9,17 +9,20 @@ import {
   loginWithEmail,
   type LoginResult,
   signupWithEmail,
+  type AccountType,
   type SignupResult,
 } from "@/lib/apiClient";
 import { saveAuthSession } from "@/lib/authSession";
 import { AgeGateCard } from "@/features/onboarding/AgeGateCard";
 
 type AuthMode = "signup" | "login";
+type SignupAccountType = Extract<AccountType, "learner" | "parent">;
 
 type FormState = {
   email: string;
   username: string;
   password: string;
+  accountType: SignupAccountType;
 };
 
 type AuthOutcome = {
@@ -36,6 +39,7 @@ const initialFormState: FormState = {
   email: "",
   username: "",
   password: "",
+  accountType: "learner",
 };
 
 const initialEmailChangeState: EmailChangeState = {
@@ -101,7 +105,7 @@ export function AuthScreen() {
     () =>
       mode === "signup"
         ? {
-            subtitle: "Start with email, username, and password.",
+            subtitle: "Choose learner or parent, then continue with email and password.",
             cta: "Create account",
           }
         : {
@@ -255,6 +259,7 @@ export function AuthScreen() {
           email,
           username,
           password,
+          accountType: formState.accountType,
         });
         const bootstrapSession = await loginWithEmail({ email, password });
 
@@ -262,6 +267,7 @@ export function AuthScreen() {
           email,
           username,
           password: "",
+          accountType: formState.accountType,
         });
         setLoginSession(bootstrapSession);
         saveAuthSession(bootstrapSession);
@@ -272,6 +278,18 @@ export function AuthScreen() {
           type: "success",
           message: `Account created for ${signupResult.email}.`,
         });
+
+        if (bootstrapSession.user.accountType !== "learner") {
+          setAgeGateUserId(null);
+          setOutcome({
+            type: "success",
+            message: `Account created for ${signupResult.email}. Redirecting to account controls...`,
+          });
+          router.push("/settings");
+
+          return;
+        }
+
         setAgeGateFlow("signup");
         setAgeGateUserId(signupResult.userId);
 
@@ -288,6 +306,17 @@ export function AuthScreen() {
         email,
         password: "",
       }));
+
+      if (loginResult.user.accountType !== "learner") {
+        setAgeGateUserId(null);
+        setOutcome({
+          type: "success",
+          message: `Welcome back, ${loginResult.user.email}. Redirecting to account controls...`,
+        });
+        router.push("/settings");
+
+        return;
+      }
 
       if (loginResult.user.hasCompletedAgeGate) {
         setAgeGateUserId(null);
@@ -358,6 +387,46 @@ export function AuthScreen() {
         </div>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          {mode === "signup" ? (
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-semibold text-foreground/85">Account type</legend>
+              <div className="grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-black/35 p-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormState((currentState) => ({
+                      ...currentState,
+                      accountType: "learner",
+                    }));
+                  }}
+                  className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
+                    formState.accountType === "learner"
+                      ? "bg-gradient-to-r from-accent to-brand text-background"
+                      : "text-foreground/75 hover:text-foreground"
+                  }`}
+                >
+                  Learner (13+ or under-13)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormState((currentState) => ({
+                      ...currentState,
+                      accountType: "parent",
+                    }));
+                  }}
+                  className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
+                    formState.accountType === "parent"
+                      ? "bg-gradient-to-r from-accent to-brand text-background"
+                      : "text-foreground/75 hover:text-foreground"
+                  }`}
+                >
+                  Parent/Guardian
+                </button>
+              </div>
+            </fieldset>
+          ) : null}
+
           <label className="block space-y-2">
             <span className="text-sm font-semibold text-foreground/85">Email</span>
             <input

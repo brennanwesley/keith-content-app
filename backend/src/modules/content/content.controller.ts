@@ -31,6 +31,16 @@ export class ContentController {
   }
 
   @UseGuards(BearerAuthGuard)
+  @Get('me/effective-content-preferences')
+  async getMyEffectiveContentPreferences(@Req() request: AuthenticatedRequest) {
+    return {
+      data: await this.contentService.getEffectiveContentPreferences(
+        request.authUser.id,
+      ),
+    };
+  }
+
+  @UseGuards(BearerAuthGuard)
   @Put('me/content-preferences')
   async updateMyContentPreferences(
     @Req() request: AuthenticatedRequest,

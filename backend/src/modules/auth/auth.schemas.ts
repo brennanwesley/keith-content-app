@@ -26,6 +26,7 @@ const signupSchema = z.object({
       'Username can contain only letters, numbers, and underscores.',
     ),
   password: passwordSchema,
+  accountType: z.enum(['learner', 'parent']).default('learner'),
 });
 
 const loginSchema = z.object({

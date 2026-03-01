@@ -17,7 +17,19 @@ describe('auth payload schemas', () => {
       email: 'user@example.com',
       username: 'learner_123',
       password: 'SecurePass10',
+      accountType: 'learner',
     });
+  });
+
+  it('accepts a parent signup payload', () => {
+    const parsed = parseSignupInput({
+      email: 'parent@example.com',
+      username: 'parent_user',
+      password: 'SecurePass10',
+      accountType: 'parent',
+    });
+
+    expect(parsed.accountType).toBe('parent');
   });
 
   it('rejects signup payload when password does not meet complexity', () => {

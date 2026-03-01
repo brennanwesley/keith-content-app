@@ -121,10 +121,12 @@ Use it with `README_BUILD_PLAN.md` as the strategy source of truth.
 ### Build steps
 - [x] 3.1 Implement profile view/update for allowed fields (email update + password re-auth shipped).
 - [x] 3.2 Enforce immutable username after account creation (username only set during signup; no update endpoint exposed).
-- [ ] 3.3 Implement parent-child linking flows (DB schema in place; API + UI linking flow still pending).
+- [x] 3.3 Implement parent-child linking flows (top priority; API + UI linking flow shipped).
 - [x] 3.4 Support **optional** parent-linking for 13+ users (13+ users proceed via direct-access age-gate path).
 - [x] 3.5 Add learner category preference controls (content-type preference selection + persistence shipped).
-- [ ] 3.6 Add parent controls to view and adjust child content preferences.
+- [x] 3.6 Add parent controls to view and adjust child content preferences (top priority).
+- [x] 3.7 Add effective preference resolver (`parent restriction wins`) with conflict handling.
+- [x] 3.8 Add watch event contract + instrumentation bootstrap so data collection starts before full history UI.
 
 ### Test and validation
 - [ ] Parent can only access linked child data scope.
@@ -146,6 +148,7 @@ Use it with `README_BUILD_PLAN.md` as the strategy source of truth.
 - [ ] 4.3 Implement Mux direct upload flow (module/env scaffolding exists; upload APIs pending).
 - [ ] 4.4 Implement webhook handling for processing status updates.
 - [ ] 4.5 Complete lifecycle handling (`draft -> processing -> ready`) in backend workflows.
+- [ ] 4.6 Dependency hardening: feed/video catalog IDs must come from backend (not static client IDs) to support reliable joins for watch history and analytics.
 
 ### Test and validation
 - [ ] Admin can upload and publish content.
@@ -165,9 +168,10 @@ Use it with `README_BUILD_PLAN.md` as the strategy source of truth.
 - [ ] 5.1 Integrate production playback source and preloading behavior (current feed remains staged/static youth hockey clips).
 - [ ] 5.2 Implement tag-based filtering and simple feed ordering.
 - [ ] 5.3 Implement watch event ingestion (batched) against `watch_events`.
-- [ ] 5.4 Build watch history grouped by content type.
-- [ ] 5.5 Keep feed ranking strategy pluggable (lightweight scaffolding only, no ML).
-- [ ] 5.6 Capture events needed for future personalization (lightweight scaffolding only, no ML).
+- [ ] 5.4 Build learner watch history grouped by content type.
+- [ ] 5.5 Build parent child-history view and usage stats from watch/progress/session data.
+- [ ] 5.6 Keep feed ranking strategy pluggable (lightweight scaffolding only, no ML).
+- [ ] 5.7 Capture events needed for future personalization (lightweight scaffolding only, no ML).
 
 ### Test and validation
 - [ ] Watch history is grouped correctly by content type.
@@ -189,6 +193,7 @@ Use it with `README_BUILD_PLAN.md` as the strategy source of truth.
 - [ ] 6.3 Add core security headers and strict CORS allowlist hardening (baseline CORS config exists).
 - [ ] 6.4 Add audit logging for admin, consent, and profile changes (email-change events are already logged).
 - [ ] 6.5 Run baseline load/performance tests up to target usage.
+- [ ] 6.6 Harden parent/link/history endpoints (authorization boundaries, abuse protections, and regression tests).
 
 ### Test and validation
 - [x] Password policy validation works as expected.
@@ -206,6 +211,7 @@ Use it with `README_BUILD_PLAN.md` as the strategy source of truth.
 
 ### Build steps
 - [ ] 7.1 Run end-to-end regression on critical user flows.
+- [ ] 7.1a Execute QA matrix by role + age/compliance state (admin, parent, learner 13+, learner under-13).
 - [ ] 7.2 Validate deploy, rollback, and key-rotation runbooks.
 - [ ] 7.3 Finalize API, architecture, and ops documentation.
 - [ ] 7.4 Perform release checklist review and go/no-go call.

@@ -8,12 +8,20 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { isIP } from 'node:net';
+import { z } from 'zod';
 import { SupabaseService } from '../supabase/supabase.service';
 import type { ChangeEmailInput, LoginInput, SignupInput } from './auth.schemas';
+
+type AccountType = 'learner' | 'parent' | 'admin';
+
+const profileAccountTypeSchema = z.object({
+  account_type: z.enum(['learner', 'parent', 'admin']),
+});
 
 export type SignupResult = {
   userId: string;
   email: string;
+  accountType: AccountType;
   requiresEmailVerification: boolean;
 };
 
@@ -31,6 +39,7 @@ export type LoginResult = {
   user: {
     id: string;
     email: string;
+    accountType: AccountType;
     emailVerified: boolean;
     hasCompletedAgeGate: boolean;
   };
@@ -77,7 +86,7 @@ export class AuthService {
       id: userId,
       username: input.username,
       display_name: input.username,
-      account_type: 'learner',
+      account_type: input.accountType,
     });
 
     if (profileInsertError) {
@@ -93,6 +102,7 @@ export class AuthService {
     return {
       userId,
       email: input.email,
+      accountType: input.accountType,
       requiresEmailVerification: false,
     };
   }
@@ -190,6 +200,31 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password.');
     }
 
+    const { data: profile, error: profileError } = await client
+      .from('profiles')
+      .select('account_type')
+      .eq('id', data.user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      throw new InternalServerErrorException('Failed to load account profile.');
+    }
+
+    if (!profile) {
+      throw new InternalServerErrorException(
+        'Account profile is missing for this user.',
+      );
+    }
+
+    const parsedProfileAccountType =
+      profileAccountTypeSchema.safeParse(profile);
+
+    if (!parsedProfileAccountType.success) {
+      throw new InternalServerErrorException('Account type was invalid.');
+    }
+
+    const accountType: AccountType = parsedProfileAccountType.data.account_type;
+
     const { data: ageGateRecord, error: ageGateError } = await client
       .from('age_gates')
       .select('user_id')
@@ -208,8 +243,10 @@ export class AuthService {
       user: {
         id: data.user.id,
         email: data.user.email ?? input.email,
+        accountType,
         emailVerified: Boolean(data.user.email_confirmed_at),
-        hasCompletedAgeGate: Boolean(ageGateRecord),
+        hasCompletedAgeGate:
+          accountType === 'learner' ? Boolean(ageGateRecord) : true,
       },
     };
   }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { changeEmailWithPassword } from "@/lib/apiClient";
 import type { StoredAuthSession } from "@/lib/authSession";
+import { ParentLinkSection } from "./ParentLinkSection";
 
 type Outcome = {
   type: "success" | "error";
@@ -185,14 +186,7 @@ export function AccountProfileTab({
         </button>
       </form>
 
-      <section className="rounded-2xl border border-white/12 bg-surface-soft/35 p-3">
-        <p className="text-sm text-foreground/80">
-          Connect a Parent/Guardian account by entering the email here:
-        </p>
-        <div className="mt-2 w-full rounded-xl border border-white/15 bg-surface-soft/80 px-3 py-2 text-sm text-foreground/65">
-          Feature coming soon!
-        </div>
-      </section>
+      <ParentLinkSection authSession={authSession} />
     </div>
   );
 }

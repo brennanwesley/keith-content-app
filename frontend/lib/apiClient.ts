@@ -10,15 +10,19 @@ type ApiEnvelope<TData> = {
   data: TData;
 };
 
+export type AccountType = 'learner' | 'parent' | 'admin';
+
 export type SignupRequest = {
   email: string;
   username: string;
   password: string;
+  accountType?: Extract<AccountType, 'learner' | 'parent'>;
 };
 
 export type SignupResult = {
   userId: string;
   email: string;
+  accountType: AccountType;
   requiresEmailVerification: boolean;
 };
 
@@ -35,6 +39,7 @@ export type LoginResult = {
   user: {
     id: string;
     email: string;
+    accountType: AccountType;
     emailVerified: boolean;
     hasCompletedAgeGate: boolean;
   };
@@ -65,6 +70,17 @@ export type MyContentPreferencesResult = {
   userId: string;
   selectedContentTypeIds: string[];
   selectedContentTypes: ContentTypeSummary[];
+};
+
+export type EffectiveContentPreferencesResult = {
+  userId: string;
+  selectedContentTypeIds: string[];
+  selectedContentTypes: ContentTypeSummary[];
+  blockedContentTypeIds: string[];
+  blockedContentTypes: ContentTypeSummary[];
+  effectiveContentTypeIds: string[];
+  effectiveContentTypes: ContentTypeSummary[];
+  isParentRestricted: boolean;
 };
 
 export type UpdateMyContentPreferencesRequest = {
@@ -98,6 +114,68 @@ export type ParentalAttestationResult = {
   approvedAt: string;
   expiresAt: string;
   policyVersion: string;
+};
+
+export type ParentLinkSummary = {
+  id: string;
+  parentUserId: string;
+  parentUsername: string;
+  childUserId: string;
+  childUsername: string;
+  relationshipStatus: 'pending' | 'active' | 'revoked';
+  linkedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type MyParentLinksResult = {
+  userId: string;
+  accountType: AccountType;
+  asParent: ParentLinkSummary[];
+  asChild: ParentLinkSummary[];
+};
+
+export type RequestParentLinkRequest = {
+  childUsername: string;
+};
+
+export type UpdateChildContentRestrictionsRequest = {
+  blockedContentTypeIds: string[];
+};
+
+export type ChildContentRestrictionsResult = {
+  parentUserId: string;
+  childUserId: string;
+  childUsername: string;
+  blockedContentTypeIds: string[];
+  blockedContentTypes: ContentTypeSummary[];
+  effectiveContentPreferences: EffectiveContentPreferencesResult;
+};
+
+export type WatchEventType =
+  | 'play'
+  | 'pause'
+  | 'progress_25'
+  | 'progress_50'
+  | 'progress_75'
+  | 'complete'
+  | 'replay';
+
+export type TrackWatchEventRequest = {
+  videoId: string;
+  eventType: WatchEventType;
+  positionSeconds?: number;
+  sessionId?: string;
+};
+
+export type WatchEventResult = {
+  id: string;
+  userId: string;
+  videoId: string;
+  eventType: WatchEventType;
+  positionSeconds: number | null;
+  occurredAt: string;
+  sessionId: string | null;
 };
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
@@ -161,6 +239,22 @@ export async function signupWithEmail(
     },
     body: JSON.stringify(payload),
   });
+
+  return response.data;
+}
+
+export async function getMyEffectiveContentPreferences(
+  accessToken: string,
+): Promise<EffectiveContentPreferencesResult> {
+  const response = await requestJson<ApiEnvelope<EffectiveContentPreferencesResult>>(
+    '/v1/me/effective-content-preferences',
+    {
+      cache: 'no-store',
+      headers: {
+        Authorization: `Bearer ${readBearerTokenOrThrow(accessToken)}`,
+      },
+    },
+  );
 
   return response.data;
 }
@@ -255,6 +349,131 @@ export async function submitParentalAttestation(
 ): Promise<ParentalAttestationResult> {
   const response = await requestJson<ApiEnvelope<ParentalAttestationResult>>(
     '/v1/onboarding/parental-attestation',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${readBearerTokenOrThrow(accessToken)}`,
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  return response.data;
+}
+
+export async function getMyParentLinks(
+  accessToken: string,
+): Promise<MyParentLinksResult> {
+  const response = await requestJson<ApiEnvelope<MyParentLinksResult>>(
+    '/v1/parent/links',
+    {
+      cache: 'no-store',
+      headers: {
+        Authorization: `Bearer ${readBearerTokenOrThrow(accessToken)}`,
+      },
+    },
+  );
+
+  return response.data;
+}
+
+export async function requestParentLink(
+  accessToken: string,
+  payload: RequestParentLinkRequest,
+): Promise<ParentLinkSummary> {
+  const response = await requestJson<ApiEnvelope<ParentLinkSummary>>(
+    '/v1/parent/links/request',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${readBearerTokenOrThrow(accessToken)}`,
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  return response.data;
+}
+
+export async function acceptParentLink(
+  accessToken: string,
+  linkId: string,
+): Promise<ParentLinkSummary> {
+  const response = await requestJson<ApiEnvelope<ParentLinkSummary>>(
+    `/v1/parent/links/${encodeURIComponent(linkId)}/accept`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${readBearerTokenOrThrow(accessToken)}`,
+      },
+    },
+  );
+
+  return response.data;
+}
+
+export async function revokeParentLink(
+  accessToken: string,
+  linkId: string,
+): Promise<ParentLinkSummary> {
+  const response = await requestJson<ApiEnvelope<ParentLinkSummary>>(
+    `/v1/parent/links/${encodeURIComponent(linkId)}/revoke`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${readBearerTokenOrThrow(accessToken)}`,
+      },
+    },
+  );
+
+  return response.data;
+}
+
+export async function getChildContentRestrictions(
+  accessToken: string,
+  childUserId: string,
+): Promise<ChildContentRestrictionsResult> {
+  const response = await requestJson<ApiEnvelope<ChildContentRestrictionsResult>>(
+    `/v1/parent/children/${encodeURIComponent(childUserId)}/content-restrictions`,
+    {
+      cache: 'no-store',
+      headers: {
+        Authorization: `Bearer ${readBearerTokenOrThrow(accessToken)}`,
+      },
+    },
+  );
+
+  return response.data;
+}
+
+export async function updateChildContentRestrictions(
+  accessToken: string,
+  childUserId: string,
+  payload: UpdateChildContentRestrictionsRequest,
+): Promise<ChildContentRestrictionsResult> {
+  const response = await requestJson<ApiEnvelope<ChildContentRestrictionsResult>>(
+    `/v1/parent/children/${encodeURIComponent(childUserId)}/content-restrictions`,
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${readBearerTokenOrThrow(accessToken)}`,
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  return response.data;
+}
+
+export async function trackWatchEvent(
+  accessToken: string,
+  payload: TrackWatchEventRequest,
+): Promise<WatchEventResult> {
+  const response = await requestJson<ApiEnvelope<WatchEventResult>>(
+    '/v1/engagement/watch-events',
     {
       method: 'POST',
       headers: {

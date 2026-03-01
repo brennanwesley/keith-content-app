@@ -54,12 +54,19 @@ describe('AuthService', () => {
       },
       error: null,
     });
-    maybeSingleMock.mockResolvedValue({
-      data: {
-        user_id: 'user-123',
-      },
-      error: null,
-    });
+    maybeSingleMock
+      .mockResolvedValueOnce({
+        data: {
+          account_type: 'learner',
+        },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          user_id: 'user-123',
+        },
+        error: null,
+      });
 
     const result = await service.login({
       email: 'bodie.tharaldson@gmail.com',
@@ -70,7 +77,8 @@ describe('AuthService', () => {
       email: 'bodie.tharaldson@gmail.com',
       password: 'testingTest1234',
     });
-    expect(fromMock).toHaveBeenCalledWith('age_gates');
+    expect(fromMock).toHaveBeenNthCalledWith(1, 'profiles');
+    expect(fromMock).toHaveBeenNthCalledWith(2, 'age_gates');
     expect(selectMock).toHaveBeenCalledWith('user_id');
     expect(eqMock).toHaveBeenCalledWith('user_id', 'user-123');
     expect(result).toEqual({
@@ -81,6 +89,7 @@ describe('AuthService', () => {
       user: {
         id: 'user-123',
         email: 'bodie.tharaldson@gmail.com',
+        accountType: 'learner',
         emailVerified: true,
         hasCompletedAgeGate: true,
       },

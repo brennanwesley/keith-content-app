@@ -27,6 +27,14 @@ const userContentPreferenceRowSchema = z.object({
   content_type_id: contentTypeIdSchema,
 });
 
+const parentContentRestrictionRowSchema = z.object({
+  content_type_id: contentTypeIdSchema,
+});
+
+const activeParentLinkRowSchema = z.object({
+  parent_user_id: z.string().uuid(),
+});
+
 export type ContentTypeSummary = {
   id: string;
   slug: string;
@@ -41,6 +49,17 @@ export type UserContentPreferencesResult = {
   userId: string;
   selectedContentTypeIds: string[];
   selectedContentTypes: ContentTypeSummary[];
+};
+
+export type EffectiveContentPreferencesResult = {
+  userId: string;
+  selectedContentTypeIds: string[];
+  selectedContentTypes: ContentTypeSummary[];
+  blockedContentTypeIds: string[];
+  blockedContentTypes: ContentTypeSummary[];
+  effectiveContentTypeIds: string[];
+  effectiveContentTypes: ContentTypeSummary[];
+  isParentRestricted: boolean;
 };
 
 @Injectable()
@@ -81,6 +100,12 @@ export class ContentService {
   }
 
   async getMyContentPreferences(
+    userId: string,
+  ): Promise<UserContentPreferencesResult> {
+    return this.getContentPreferencesForUser(userId);
+  }
+
+  async getContentPreferencesForUser(
     userId: string,
   ): Promise<UserContentPreferencesResult> {
     const client = this.getClientOrThrow();
@@ -166,7 +191,59 @@ export class ContentService {
     };
   }
 
+  async getEffectiveContentPreferences(
+    userId: string,
+  ): Promise<EffectiveContentPreferencesResult> {
+    const selectedPreferences = await this.getContentPreferencesForUser(userId);
+    const activeContentTypes = await this.listContentTypes();
+    const activeContentTypeById = new Map(
+      activeContentTypes.map((contentType) => [contentType.id, contentType]),
+    );
+
+    const baseSelectedContentTypeIds =
+      selectedPreferences.selectedContentTypeIds.length > 0
+        ? selectedPreferences.selectedContentTypeIds
+        : activeContentTypes.map((contentType) => contentType.id);
+
+    const blockedContentTypeIds = await this.listBlockedContentTypeIds(userId);
+    const blockedContentTypeIdSet = new Set(blockedContentTypeIds);
+
+    const effectiveContentTypeIds = baseSelectedContentTypeIds.filter(
+      (contentTypeId) => !blockedContentTypeIdSet.has(contentTypeId),
+    );
+
+    const blockedContentTypes = blockedContentTypeIds
+      .map((contentTypeId) => activeContentTypeById.get(contentTypeId))
+      .filter((contentType): contentType is ContentTypeSummary =>
+        Boolean(contentType),
+      );
+
+    const effectiveContentTypes = effectiveContentTypeIds
+      .map((contentTypeId) => activeContentTypeById.get(contentTypeId))
+      .filter((contentType): contentType is ContentTypeSummary =>
+        Boolean(contentType),
+      );
+
+    return {
+      userId,
+      selectedContentTypeIds: selectedPreferences.selectedContentTypeIds,
+      selectedContentTypes: selectedPreferences.selectedContentTypes,
+      blockedContentTypeIds,
+      blockedContentTypes,
+      effectiveContentTypeIds,
+      effectiveContentTypes,
+      isParentRestricted: blockedContentTypeIds.length > 0,
+    };
+  }
+
   async replaceMyContentPreferences(
+    userId: string,
+    input: UpdateMyContentPreferencesInput,
+  ): Promise<UserContentPreferencesResult> {
+    return this.replaceContentPreferencesForUser(userId, input);
+  }
+
+  async replaceContentPreferencesForUser(
     userId: string,
     input: UpdateMyContentPreferencesInput,
   ): Promise<UserContentPreferencesResult> {
@@ -202,7 +279,67 @@ export class ContentService {
       }
     }
 
-    return this.getMyContentPreferences(userId);
+    return this.getContentPreferencesForUser(userId);
+  }
+
+  private async listBlockedContentTypeIds(userId: string): Promise<string[]> {
+    const client = this.getClientOrThrow();
+    const { data: activeParentLinks, error: activeParentLinksError } =
+      await client
+        .from('parent_child_links')
+        .select('parent_user_id')
+        .eq('child_user_id', userId)
+        .eq('relationship_status', 'active');
+
+    if (activeParentLinksError) {
+      throw new InternalServerErrorException(
+        'Failed to verify active parent links.',
+      );
+    }
+
+    const parsedActiveParentLinks = z
+      .array(activeParentLinkRowSchema)
+      .safeParse(activeParentLinks ?? []);
+
+    if (!parsedActiveParentLinks.success) {
+      throw new InternalServerErrorException(
+        'Active parent link payload was invalid.',
+      );
+    }
+
+    const activeParentIds = parsedActiveParentLinks.data.map(
+      (row) => row.parent_user_id,
+    );
+
+    if (activeParentIds.length === 0) {
+      return [];
+    }
+
+    const { data: restrictionRows, error: restrictionError } = await client
+      .from('parent_content_restrictions')
+      .select('content_type_id')
+      .eq('child_user_id', userId)
+      .in('parent_user_id', activeParentIds);
+
+    if (restrictionError) {
+      throw new InternalServerErrorException(
+        'Failed to load parent content restrictions.',
+      );
+    }
+
+    const parsedRestrictionRows = z
+      .array(parentContentRestrictionRowSchema)
+      .safeParse(restrictionRows ?? []);
+
+    if (!parsedRestrictionRows.success) {
+      throw new InternalServerErrorException(
+        'Parent content restriction payload was invalid.',
+      );
+    }
+
+    return Array.from(
+      new Set(parsedRestrictionRows.data.map((row) => row.content_type_id)),
+    );
   }
 
   private async assertActiveContentTypes(
