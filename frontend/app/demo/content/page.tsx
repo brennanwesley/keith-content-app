@@ -3,56 +3,32 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  getContentTypes,
-  getMyContentPreferences,
-  updateMyContentPreferences,
-  type ContentTypeSummary,
-} from "@/lib/apiClient";
-import { readAuthSession } from "@/lib/authSession";
+import { getContentTypes, type ContentTypeSummary } from "@/lib/apiClient";
 
 type Outcome = {
   type: "success" | "error";
   message: string;
 };
 
-export default function ContentSelectionPage() {
+export default function DemoContentSelectionPage() {
   const router = useRouter();
-  const [authSession] = useState(() => readAuthSession());
   const [contentTypes, setContentTypes] = useState<ContentTypeSummary[]>([]);
   const [selectedContentTypeIds, setSelectedContentTypeIds] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(() => Boolean(authSession));
-  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
 
   useEffect(() => {
-    if (!authSession) {
-      return;
-    }
-
     let cancelled = false;
 
     const loadContentTypes = async () => {
       try {
-        const [availableContentTypes, savedPreferences] = await Promise.all([
-          getContentTypes(),
-          getMyContentPreferences(authSession.accessToken),
-        ]);
+        const availableContentTypes = await getContentTypes();
 
         if (cancelled) {
           return;
         }
 
-        const availableContentTypeIds = new Set(
-          availableContentTypes.map((contentType) => contentType.id),
-        );
-
         setContentTypes(availableContentTypes);
-        setSelectedContentTypeIds(
-          savedPreferences.selectedContentTypeIds.filter((contentTypeId) =>
-            availableContentTypeIds.has(contentTypeId),
-          ),
-        );
       } catch (error) {
         if (cancelled) {
           return;
@@ -76,7 +52,7 @@ export default function ContentSelectionPage() {
     return () => {
       cancelled = true;
     };
-  }, [authSession]);
+  }, []);
 
   const toggleContentType = (contentTypeId: string) => {
     setSelectedContentTypeIds((currentIds) => {
@@ -90,68 +66,28 @@ export default function ContentSelectionPage() {
     setOutcome(null);
   };
 
-  const handleStartLearning = async () => {
-    if (!authSession) {
-      setOutcome({
-        type: "error",
-        message: "Please log in before saving content preferences.",
-      });
-      return;
-    }
-
-    setIsSaving(true);
-    setOutcome(null);
-
-    try {
-      await updateMyContentPreferences(authSession.accessToken, {
-        contentTypeIds: selectedContentTypeIds,
-      });
-
-      router.push("/feed/youth-hockey");
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Unable to save your content preferences right now.";
-
-      setOutcome({ type: "error", message });
-    } finally {
-      setIsSaving(false);
-    }
+  const handleStartLearning = () => {
+    router.push("/demo/feed/youth-hockey");
   };
-
-  if (!authSession) {
-    return (
-      <main className="min-h-[100dvh] px-5 py-6 sm:px-8">
-        <section className="mx-auto flex min-h-[calc(100dvh-3rem)] w-full max-w-md flex-col justify-center rounded-3xl border border-white/10 bg-surface/95 p-6 text-center shadow-[0_24px_80px_-36px_rgba(254,44,85,0.42)] ring-1 ring-accent/25 backdrop-blur-sm sm:p-8">
-          <p className="text-sm text-foreground/80">
-            Account session missing. Please log in again to select your content types.
-          </p>
-          <Link href="/auth" className="mt-4 text-sm font-semibold text-brand-muted hover:text-accent-strong">
-            Go to account login →
-          </Link>
-        </section>
-      </main>
-    );
-  }
 
   return (
     <main className="min-h-[100dvh] px-5 py-6 sm:px-8">
       <section className="mx-auto flex min-h-[calc(100dvh-3rem)] w-full max-w-md flex-col rounded-3xl border border-white/10 bg-surface/95 p-6 shadow-[0_24px_80px_-36px_rgba(254,44,85,0.42)] ring-1 ring-accent/25 backdrop-blur-sm sm:p-8">
         <header>
           <p className="text-xs font-semibold uppercase tracking-[0.26em] text-brand-muted">
-            Pick your learning lanes
+            Demo mode
           </p>
           <h1 className="font-brand mt-3 bg-gradient-to-r from-foreground via-brand-muted to-brand bg-clip-text text-3xl text-transparent">
             Content Selection
           </h1>
           <p className="mt-3 text-sm leading-6 text-foreground/80">
-            Select one or multiple content types and start learning with your saved preferences.
+            Explore the experience instantly. Demo preferences are temporary and are not saved
+            to an account.
           </p>
         </header>
 
         <div className="mt-3 rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-xs text-foreground/75">
-          Selected: {selectedContentTypeIds.length}
+          Selected (demo only): {selectedContentTypeIds.length}
         </div>
 
         {isLoading ? (
@@ -216,24 +152,22 @@ export default function ContentSelectionPage() {
 
         <button
           type="button"
-          onClick={() => {
-            void handleStartLearning();
-          }}
-          disabled={!authSession || isLoading || isSaving}
+          onClick={handleStartLearning}
+          disabled={isLoading}
           className="mt-6 inline-flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-accent to-brand px-5 py-3 text-base font-extrabold text-background transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isSaving ? "Saving preferences..." : "Start Learning"}
+          Start Learning
         </button>
 
         <footer className="mt-auto flex items-center justify-between gap-4 pt-6">
           <Link
-            href="/settings"
+            href="/demo/settings"
             className="text-sm font-semibold text-brand-muted hover:text-accent-strong"
           >
             ← Account Settings
           </Link>
           <Link
-            href="/feed/youth-hockey"
+            href="/demo/feed/youth-hockey"
             className="text-sm font-semibold text-brand-muted hover:text-accent-strong"
           >
             Skip →

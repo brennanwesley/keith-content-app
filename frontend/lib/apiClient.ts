@@ -55,6 +55,9 @@ export type ContentTypeSummary = {
   id: string;
   slug: string;
   name: string;
+  description: string;
+  iconKey: string | null;
+  sortOrder: number;
   isActive: boolean;
 };
 

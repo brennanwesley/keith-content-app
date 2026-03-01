@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   clearAuthSession,
@@ -10,17 +11,16 @@ import {
 } from "@/lib/authSession";
 import { AccountProfileTab } from "./AccountProfileTab";
 import { ContentPreferencesTab } from "./ContentPreferencesTab";
-import { ParentLinkTab } from "./ParentLinkTab";
 
-type SettingsTab = "content" | "account" | "parent";
+type SettingsTab = "content" | "account";
 
 const tabLabels: Record<SettingsTab, string> = {
   content: "Content Types",
   account: "Account Profile",
-  parent: "Parent/Guardian Link",
 };
 
 export function SettingsPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<SettingsTab>("content");
   const [authSession, setAuthSession] = useState<StoredAuthSession | null>(() =>
     readAuthSession(),
@@ -35,6 +35,7 @@ export function SettingsPage() {
   const handleSignOut = () => {
     clearAuthSession();
     setAuthSession(null);
+    router.replace("/");
   };
 
   return (
@@ -48,11 +49,11 @@ export function SettingsPage() {
             Settings
           </h1>
           <p className="mt-3 text-sm leading-6 text-foreground/80">
-            Manage your content lanes, account details, and family linking in one place.
+            Manage your content lanes and account details in one place.
           </p>
         </header>
 
-        <div className="mt-6 grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-black/35 p-1">
+        <div className="mt-6 grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-black/35 p-1">
           {(Object.keys(tabLabels) as SettingsTab[]).map((tab) => {
             const isActive = activeTab === tab;
 
@@ -89,13 +90,6 @@ export function SettingsPage() {
               isSessionReady={isSessionReady}
               onSessionUpdated={handleSessionUpdated}
               onSignOut={handleSignOut}
-            />
-          ) : null}
-
-          {activeTab === "parent" ? (
-            <ParentLinkTab
-              authSession={authSession}
-              isSessionReady={isSessionReady}
             />
           ) : null}
         </article>

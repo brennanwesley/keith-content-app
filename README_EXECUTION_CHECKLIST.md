@@ -75,6 +75,46 @@ Use it with `README_BUILD_PLAN.md` as the strategy source of truth.
 - [x] Stop trusting userId from client body for protected writes (derive from auth token).
 - [x] Add account_security_events writes for credential changes.
 
+#### Phase 4 — Demo/Auth split + scalable content-type platform (Approved Option 3)
+- [x] 2.6 Route namespace split:
+- [x] Add `/demo/content`, `/demo/feed/youth-hockey`, and `/demo/settings` for demo-only traffic.
+- [x] Keep authenticated app routes (`/content`, `/feed/*`, `/settings`) isolated from demo flow.
+- [x] 2.7 Route access controls + session boundaries:
+- [x] Enforce auth guard behavior for authenticated routes and prevent cross-flow overlap.
+- [x] Keep demo users stateless for account features (no profile writes, no preference persistence).
+- [x] 2.8 Navigation updates:
+- [x] Landing CTAs: `Create Account / Log In` and `Start Demo`.
+- [x] Content footer left action changes from `Back to home` to `Account Settings`.
+- [x] Demo settings route should show read-only/no-session account messaging.
+- [x] 2.9 Settings IA simplification:
+- [x] Reduce tabs to only `Content Types` and `Account Profile`.
+- [x] Move parent/guardian into Account Profile as a status section below email change.
+- [x] Parent/guardian section copy: `Connect a Parent/Guardian account by entering the email here:` with input-style placeholder `Feature coming soon!`.
+- [x] 2.10 Sign-out behavior:
+- [x] Sign-out must clear local auth session and redirect to landing page (`/`).
+- [x] 2.11 Content type data model expansion (scalable foundation):
+- [x] Add migration to extend `content_types` with descriptive fields (minimum `description`; optionally `sort_order`, `icon_key`).
+- [x] Keep `is_active` as visibility control for whether a content type is selectable.
+- [x] Seed active content types: `youth-hockey`, `youth-soccer`, `youth-piano`, `minecraft`.
+- [x] 2.12 API and backend support:
+- [x] Update `/v1/content-types` contract to return expanded content metadata.
+- [x] Preserve authenticated persistence in `user_content_preferences` for created-account users only.
+- [x] 2.13 Content selection UX behavior:
+- [x] Render dynamic content cards from `/v1/content-types` (no hardcoded cards).
+- [x] Allow multi-select on cards; clicking a card should toggle selection, not immediately redirect.
+- [x] Add a primary `Start Learning` action that submits selected preferences for authenticated users.
+- [x] Demo users can select/skip and proceed without saving account preferences.
+- [x] 2.14 Settings content tab UX:
+- [x] Show selected content types as pill badges.
+- [x] Empty state (no selections): `No content types selected. Please select your preferred content.`
+- [x] 2.15 Feed integration staging:
+- [x] Keep current feed source unchanged for now (youth hockey clips) while finalizing content-type UX.
+- [x] Defer video-to-content-type filtering integration to Day 4/Day 5 feed pipeline tasks.
+- [x] 2.16 Validation and regression checks:
+- [x] Verify demo and authenticated instances remain isolated across devices/sessions.
+- [x] Verify no demo path writes to account-owned tables.
+- [x] Verify sign-out redirect, settings tab behavior, and content preference save/load UX.
+
 ## Day 3 - Profiles, parent links, and category preferences
 **Goal:** Complete account controls and family-link behavior.
 

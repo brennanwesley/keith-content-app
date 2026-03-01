@@ -12,6 +12,9 @@ const contentTypeRowSchema = z.object({
   id: z.string().uuid(),
   slug: z.string(),
   name: z.string(),
+  description: z.string(),
+  icon_key: z.string().nullable().optional(),
+  sort_order: z.number().int(),
   is_active: z.boolean(),
 });
 
@@ -27,6 +30,9 @@ export type ContentTypeSummary = {
   id: string;
   slug: string;
   name: string;
+  description: string;
+  iconKey: string | null;
+  sortOrder: number;
   isActive: boolean;
 };
 
@@ -45,8 +51,9 @@ export class ContentService {
 
     const { data, error } = await client
       .from('content_types')
-      .select('id, slug, name, is_active')
+      .select('id, slug, name, description, icon_key, sort_order, is_active')
       .eq('is_active', true)
+      .order('sort_order', { ascending: true })
       .order('name', { ascending: true });
 
     if (error) {
@@ -65,6 +72,9 @@ export class ContentService {
       id: row.id,
       slug: row.slug,
       name: row.name,
+      description: row.description,
+      iconKey: row.icon_key ?? null,
+      sortOrder: row.sort_order,
       isActive: row.is_active,
     }));
   }
@@ -110,7 +120,7 @@ export class ContentService {
 
     const { data: contentTypeRows, error: contentTypeError } = await client
       .from('content_types')
-      .select('id, slug, name, is_active')
+      .select('id, slug, name, description, icon_key, sort_order, is_active')
       .in('id', selectedContentTypeIds);
 
     if (contentTypeError) {
@@ -142,6 +152,9 @@ export class ContentService {
         id: row.id,
         slug: row.slug,
         name: row.name,
+        description: row.description,
+        iconKey: row.icon_key ?? null,
+        sortOrder: row.sort_order,
         isActive: row.is_active,
       }));
 

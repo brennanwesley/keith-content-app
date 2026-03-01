@@ -30,6 +30,13 @@ export function ContentPreferencesTab({
   const [isSavingContent, setIsSavingContent] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
 
+  const contentTypeById = new Map(
+    contentTypes.map((contentType) => [contentType.id, contentType]),
+  );
+  const selectedContentTypes = selectedContentTypeIds
+    .map((contentTypeId) => contentTypeById.get(contentTypeId))
+    .filter((contentType): contentType is ContentTypeSummary => Boolean(contentType));
+
   useEffect(() => {
     if (!isSessionReady || !authSession) {
       setContentTypes([]);
@@ -142,6 +149,31 @@ export function ContentPreferencesTab({
     <div className="space-y-3">
       <p>Select the content lanes you want included in your feed.</p>
 
+      {!isLoadingContent ? (
+        <div className="space-y-2 rounded-2xl border border-white/10 bg-black/25 p-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-foreground/65">
+            Selected content types
+          </p>
+
+          {selectedContentTypes.length === 0 ? (
+            <p className="text-sm text-foreground/75">
+              No content types selected. Please select your preferred content.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {selectedContentTypes.map((contentType) => (
+                <span
+                  key={contentType.id}
+                  className="inline-flex items-center rounded-full border border-brand/40 bg-brand/15 px-3 py-1 text-xs font-semibold text-brand-muted"
+                >
+                  {contentType.name}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : null}
+
       {isLoadingContent ? (
         <p className="text-xs text-foreground/70">Loading options...</p>
       ) : null}
@@ -159,9 +191,10 @@ export function ContentPreferencesTab({
               key={contentType.id}
               className="flex cursor-pointer items-center justify-between rounded-xl border border-white/12 bg-surface-soft/40 px-3 py-2"
             >
-              <span className="text-sm font-semibold text-foreground/90">
-                {contentType.name}
-              </span>
+              <div>
+                <p className="text-sm font-semibold text-foreground/90">{contentType.name}</p>
+                <p className="text-xs text-foreground/65">{contentType.description}</p>
+              </div>
               <input
                 type="checkbox"
                 checked={isSelected}

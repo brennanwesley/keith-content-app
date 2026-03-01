@@ -118,70 +118,81 @@ export function AccountProfileTab({
   }
 
   return (
-    <form onSubmit={handleEmailChange} className="space-y-3">
-      <p className="text-xs text-foreground/70">Current email: {authSession.user.email}</p>
+    <div className="space-y-4">
+      <form onSubmit={handleEmailChange} className="space-y-3">
+        <p className="text-xs text-foreground/70">Current email: {authSession.user.email}</p>
 
-      <label className="block space-y-1">
-        <span className="text-xs font-semibold uppercase tracking-[0.14em] text-foreground/70">
-          New email
-        </span>
-        <input
-          type="email"
-          value={newEmail}
-          onChange={(event) => {
-            setNewEmail(event.target.value);
-          }}
-          className="w-full rounded-xl border border-white/15 bg-surface-soft/80 px-3 py-2 text-sm outline-none transition focus:border-brand/70"
-          placeholder="new-email@example.com"
-          autoComplete="email"
-          required
-        />
-      </label>
+        <label className="block space-y-1">
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-foreground/70">
+            New email
+          </span>
+          <input
+            type="email"
+            value={newEmail}
+            onChange={(event) => {
+              setNewEmail(event.target.value);
+            }}
+            className="w-full rounded-xl border border-white/15 bg-surface-soft/80 px-3 py-2 text-sm outline-none transition focus:border-brand/70"
+            placeholder="new-email@example.com"
+            autoComplete="email"
+            required
+          />
+        </label>
 
-      <label className="block space-y-1">
-        <span className="text-xs font-semibold uppercase tracking-[0.14em] text-foreground/70">
-          Current password
-        </span>
-        <input
-          type="password"
-          value={currentPassword}
-          onChange={(event) => {
-            setCurrentPassword(event.target.value);
-          }}
-          className="w-full rounded-xl border border-white/15 bg-surface-soft/80 px-3 py-2 text-sm outline-none transition focus:border-brand/70"
-          placeholder="Enter current password"
-          autoComplete="current-password"
-          required
-        />
-      </label>
+        <label className="block space-y-1">
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-foreground/70">
+            Current password
+          </span>
+          <input
+            type="password"
+            value={currentPassword}
+            onChange={(event) => {
+              setCurrentPassword(event.target.value);
+            }}
+            className="w-full rounded-xl border border-white/15 bg-surface-soft/80 px-3 py-2 text-sm outline-none transition focus:border-brand/70"
+            placeholder="Enter current password"
+            autoComplete="current-password"
+            required
+          />
+        </label>
 
-      {outcome ? (
-        <p
-          className={`rounded-xl border px-3 py-2 text-xs ${
-            outcome.type === "success"
-              ? "border-brand/35 bg-brand/10 text-brand-muted"
-              : "border-accent/40 bg-accent/10 text-accent-strong"
-          }`}
+        {outcome ? (
+          <p
+            className={`rounded-xl border px-3 py-2 text-xs ${
+              outcome.type === "success"
+                ? "border-brand/35 bg-brand/10 text-brand-muted"
+                : "border-accent/40 bg-accent/10 text-accent-strong"
+            }`}
+          >
+            {outcome.message}
+          </p>
+        ) : null}
+
+        <button
+          type="submit"
+          disabled={isChangingEmail}
+          className="inline-flex w-full items-center justify-center rounded-xl border border-brand/35 bg-brand/15 px-4 py-2 text-sm font-semibold text-brand-muted transition hover:border-accent/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {outcome.message}
+          {isChangingEmail ? "Updating..." : "Update email"}
+        </button>
+
+        <button
+          type="button"
+          onClick={onSignOut}
+          className="inline-flex w-full items-center justify-center rounded-xl border border-accent/35 bg-accent/10 px-4 py-2 text-sm font-semibold text-accent-strong transition hover:border-accent/60"
+        >
+          Sign out on this device
+        </button>
+      </form>
+
+      <section className="rounded-2xl border border-white/12 bg-surface-soft/35 p-3">
+        <p className="text-sm text-foreground/80">
+          Connect a Parent/Guardian account by entering the email here:
         </p>
-      ) : null}
-
-      <button
-        type="submit"
-        disabled={isChangingEmail}
-        className="inline-flex w-full items-center justify-center rounded-xl border border-brand/35 bg-brand/15 px-4 py-2 text-sm font-semibold text-brand-muted transition hover:border-accent/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {isChangingEmail ? "Updating..." : "Update email"}
-      </button>
-
-      <button
-        type="button"
-        onClick={onSignOut}
-        className="inline-flex w-full items-center justify-center rounded-xl border border-accent/35 bg-accent/10 px-4 py-2 text-sm font-semibold text-accent-strong transition hover:border-accent/60"
-      >
-        Sign out on this device
-      </button>
-    </form>
+        <div className="mt-2 w-full rounded-xl border border-white/15 bg-surface-soft/80 px-3 py-2 text-sm text-foreground/65">
+          Feature coming soon!
+        </div>
+      </section>
+    </div>
   );
 }

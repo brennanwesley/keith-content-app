@@ -6,7 +6,15 @@ import { youthHockeyVideos } from "./videoData";
 
 const END_PANEL_INDEX = youthHockeyVideos.length;
 
-export function YouthHockeyFeed() {
+type YouthHockeyFeedProps = {
+  backHref?: string;
+  settingsHref?: string;
+};
+
+export function YouthHockeyFeed({
+  backHref = "/content",
+  settingsHref = "/settings",
+}: YouthHockeyFeedProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const panelRefs = useRef<Array<HTMLElement | null>>([]);
   const videoRefs = useRef<Array<HTMLVideoElement | null>>([]);
@@ -181,7 +189,7 @@ export function YouthHockeyFeed() {
 
             <div className="absolute inset-x-0 top-0 z-10 grid grid-cols-[auto_1fr_auto] items-center gap-3 px-4 pt-[max(1rem,env(safe-area-inset-top))]">
               <Link
-                href="/content"
+                href={backHref}
                 aria-label="Back to content selection"
                 className="pointer-events-auto inline-flex size-9 items-center justify-center rounded-full border border-brand/45 bg-black/55 text-lg font-bold text-brand-muted transition hover:border-accent/50 hover:text-white"
               >
@@ -191,7 +199,7 @@ export function YouthHockeyFeed() {
                 Youth Hockey
               </p>
               <Link
-                href="/settings"
+                href={settingsHref}
                 aria-label="Open settings"
                 className="pointer-events-auto inline-flex size-9 items-center justify-center rounded-full border border-brand/45 bg-black/55 text-sm font-bold text-brand-muted transition hover:border-accent/50 hover:text-white"
               >
