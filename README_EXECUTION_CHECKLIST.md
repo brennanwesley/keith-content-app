@@ -152,9 +152,11 @@ Blockers:
 - [x] 4.4 Implement webhook handling for processing status updates (`/v1/mux/webhooks` signature verification + asset status persistence).
 - [ ] 4.5 Complete lifecycle handling (`draft -> processing -> ready`) in backend workflows.
 - [ ] 4.6 Dependency hardening: feed/video catalog IDs must come from backend (not static client IDs) to support reliable joins for watch history and analytics.
+- [ ] 4.7 Desktop-first admin UI hardening pass (keep existing mobile layout intact; improve desktop content-studio ergonomics with a simple, scalable structure we can extend later).
 
 ### Test and validation
 - [ ] Admin can upload and publish content.
+- [ ] Admin desktop workflow is efficient for create/edit/upload actions while mobile remains functional.
 - [ ] Feed only returns `ready` content.
 - [ ] Multi-tag assignment appears correctly in content queries.
 
