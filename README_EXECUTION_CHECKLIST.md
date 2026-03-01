@@ -116,14 +116,14 @@ Use it with `README_BUILD_PLAN.md` as the strategy source of truth.
 - [x] Verify sign-out redirect, settings tab behavior, and content preference save/load UX.
 
 ## Day 3 - Profiles, parent links, and category preferences
-**Goal:** Complete account controls and family-link behavior.
+**Goal:** Finalize account controls and family-link behavior using Day 2 baseline work.
 
 ### Build steps
-- [ ] 3.1 Implement profile view/update for allowed fields.
-- [ ] 3.2 Enforce immutable username after account creation.
-- [ ] 3.3 Implement parent-child linking flows.
-- [ ] 3.4 Support **optional** parent-linking for 13+ users.
-- [ ] 3.5 Add learner category preference controls (interests/preferences).
+- [x] 3.1 Implement profile view/update for allowed fields (email update + password re-auth shipped).
+- [x] 3.2 Enforce immutable username after account creation (username only set during signup; no update endpoint exposed).
+- [ ] 3.3 Implement parent-child linking flows (DB schema in place; API + UI linking flow still pending).
+- [x] 3.4 Support **optional** parent-linking for 13+ users (13+ users proceed via direct-access age-gate path).
+- [x] 3.5 Add learner category preference controls (content-type preference selection + persistence shipped).
 - [ ] 3.6 Add parent controls to view and adjust child content preferences.
 
 ### Test and validation
@@ -138,14 +138,14 @@ Use it with `README_BUILD_PLAN.md` as the strategy source of truth.
 ---
 
 ## Day 4 - Content operations and Mux pipeline
-**Goal:** Enable reliable admin content ingestion and publishing lifecycle.
+**Goal:** Enable reliable admin content ingestion and publishing lifecycle beyond schema scaffolding.
 
 ### Build steps
 - [ ] 4.1 Build admin content create/manage flow.
-- [ ] 4.2 Enable multiple content-type tags per video.
-- [ ] 4.3 Implement Mux direct upload flow.
+- [ ] 4.2 Enable multiple content-type tags per video in API/admin flows (join-table schema already exists).
+- [ ] 4.3 Implement Mux direct upload flow (module/env scaffolding exists; upload APIs pending).
 - [ ] 4.4 Implement webhook handling for processing status updates.
-- [ ] 4.5 Complete lifecycle handling (`draft -> processing -> ready`).
+- [ ] 4.5 Complete lifecycle handling (`draft -> processing -> ready`) in backend workflows.
 
 ### Test and validation
 - [ ] Admin can upload and publish content.
@@ -159,12 +159,12 @@ Use it with `README_BUILD_PLAN.md` as the strategy source of truth.
 ---
 
 ## Day 5 - Feed quality, history, and analytics basics
-**Goal:** Deliver a solid learner feed and measurable engagement baseline.
+**Goal:** Move from static demo feed behavior to data-driven feed quality and measurable engagement baseline.
 
 ### Build steps
-- [ ] 5.1 Integrate production playback source and preloading behavior.
+- [ ] 5.1 Integrate production playback source and preloading behavior (current feed remains staged/static youth hockey clips).
 - [ ] 5.2 Implement tag-based filtering and simple feed ordering.
-- [ ] 5.3 Implement watch event ingestion (batched).
+- [ ] 5.3 Implement watch event ingestion (batched) against `watch_events`.
 - [ ] 5.4 Build watch history grouped by content type.
 - [ ] 5.5 Keep feed ranking strategy pluggable (lightweight scaffolding only, no ML).
 - [ ] 5.6 Capture events needed for future personalization (lightweight scaffolding only, no ML).
@@ -181,17 +181,17 @@ Use it with `README_BUILD_PLAN.md` as the strategy source of truth.
 ---
 
 ## Day 6 - Security and performance hardening
-**Goal:** Reach week-1 production safety baseline.
+**Goal:** Close remaining security/performance gaps to reach week-1 production safety baseline.
 
 ### Build steps
-- [ ] 6.1 Enforce password policy (min 10 + uppercase + lowercase + number).
+- [x] 6.1 Enforce password policy (min 10 + uppercase + lowercase + number).
 - [ ] 6.2 Add baseline rate limiting on signup/login/consent endpoints.
-- [ ] 6.3 Add core security headers and strict CORS allowlist.
-- [ ] 6.4 Add audit logging for admin, consent, and profile changes.
+- [ ] 6.3 Add core security headers and strict CORS allowlist hardening (baseline CORS config exists).
+- [ ] 6.4 Add audit logging for admin, consent, and profile changes (email-change events are already logged).
 - [ ] 6.5 Run baseline load/performance tests up to target usage.
 
 ### Test and validation
-- [ ] Password policy validation works as expected.
+- [x] Password policy validation works as expected.
 - [ ] Rate limiting activates on repeated auth/consent attempts.
 - [ ] Latency/error rates are acceptable at target load.
 
@@ -211,7 +211,7 @@ Use it with `README_BUILD_PLAN.md` as the strategy source of truth.
 - [ ] 7.4 Perform release checklist review and go/no-go call.
 
 ### Test and validation
-- [ ] Critical flows pass (auth, onboarding, feed, history, admin).
+- [ ] Critical flows pass (auth, onboarding, feed/settings now; expand to history/admin as those modules ship).
 - [ ] Deployment verification is complete.
 - [ ] Rollback rehearsal is complete.
 
