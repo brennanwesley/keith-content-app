@@ -6,10 +6,11 @@ import {
 } from '@nestjs/common';
 import { z } from 'zod';
 import { SupabaseService } from '../supabase/supabase.service';
+import { contentTypeIdSchema } from './content-id.schema';
 import type { UpdateMyContentPreferencesInput } from './content.schemas';
 
 const contentTypeRowSchema = z.object({
-  id: z.string().uuid(),
+  id: contentTypeIdSchema,
   slug: z.string(),
   name: z.string(),
   description: z.string(),
@@ -19,11 +20,11 @@ const contentTypeRowSchema = z.object({
 });
 
 const contentTypeIdRowSchema = z.object({
-  id: z.string().uuid(),
+  id: contentTypeIdSchema,
 });
 
 const userContentPreferenceRowSchema = z.object({
-  content_type_id: z.string().uuid(),
+  content_type_id: contentTypeIdSchema,
 });
 
 export type ContentTypeSummary = {

@@ -13,6 +13,16 @@ describe('content.schemas', () => {
     expect(parsed.contentTypeIds).toEqual([firstId, secondId]);
   });
 
+  it('accepts canonical Postgres UUID values outside strict RFC variant checks', () => {
+    const postgresStyleUuid = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+
+    const parsed = parseUpdateMyContentPreferencesInput({
+      contentTypeIds: [postgresStyleUuid],
+    });
+
+    expect(parsed.contentTypeIds).toEqual([postgresStyleUuid]);
+  });
+
   it('defaults to empty contentTypeIds when payload omits it', () => {
     const parsed = parseUpdateMyContentPreferencesInput({});
 

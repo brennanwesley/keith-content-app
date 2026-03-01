@@ -1,9 +1,10 @@
 import { BadRequestException } from '@nestjs/common';
 import { z } from 'zod';
+import { contentTypeIdSchema } from './content-id.schema';
 
 const updateMyContentPreferencesSchema = z.object({
   contentTypeIds: z
-    .array(z.string().uuid('Each content type ID must be a valid UUID.'))
+    .array(contentTypeIdSchema)
     .max(25, 'You can select up to 25 content types.')
     .default([])
     .transform((value) => Array.from(new Set(value))),
