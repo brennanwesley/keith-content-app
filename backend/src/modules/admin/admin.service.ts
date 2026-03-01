@@ -22,23 +22,51 @@ const profileAccountTypeRowSchema = z.object({
   account_type: z.enum(['learner', 'parent', 'admin']),
 });
 
+const persistedVideoStatusSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .transform((status) => {
+    if (status === 'published') {
+      return 'ready';
+    }
+
+    if (status === 'unpublished') {
+      return 'draft';
+    }
+
+    return status;
+  })
+  .pipe(videoStatusSchema);
+
+const integerLikeSchema = z.union([
+  z.number().int(),
+  z
+    .string()
+    .trim()
+    .regex(/^-?\d+$/)
+    .transform((value) => Number(value)),
+]);
+
+const dateTimeLikeSchema = z.coerce.date().transform((value) => value.toISOString());
+
 const videoRowSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().trim().min(1),
   title: z.string(),
   description: z.string().nullable(),
-  status: videoStatusSchema,
-  owner_id: z.string().uuid().nullable(),
-  duration_seconds: z.number().int().nullable(),
+  status: persistedVideoStatusSchema,
+  owner_id: z.string().trim().min(1).nullable(),
+  duration_seconds: z.union([integerLikeSchema, z.null()]),
   thumbnail_url: z.string().nullable(),
-  published_at: z.string().nullable(),
-  created_at: z.string(),
-  updated_at: z.string(),
+  published_at: z.union([dateTimeLikeSchema, z.null()]),
+  created_at: dateTimeLikeSchema,
+  updated_at: dateTimeLikeSchema,
 });
 
 const videoContentTypeRowSchema = z.object({
-  video_id: z.string().uuid(),
+  video_id: z.string().trim().min(1),
   content_type_id: contentTypeIdSchema,
-  created_at: z.string(),
+  created_at: dateTimeLikeSchema,
 });
 
 const contentTypeRowSchema = z.object({

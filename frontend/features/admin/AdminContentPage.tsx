@@ -100,14 +100,46 @@ export function AdminContentPage() {
   const isAdmin = authSession?.user.accountType === "admin";
 
   const loadAdminData = async (accessToken: string) => {
-    const [availableContentTypes, adminVideos] = await Promise.all([
+    const [contentTypesResult, videosResult] = await Promise.allSettled([
       getContentTypes(),
       listAdminVideos(accessToken),
     ]);
 
-    setContentTypes(availableContentTypes);
-    setVideos(adminVideos);
-    setManagedVideoDraftById(buildManagedDraftMap(adminVideos));
+    if (contentTypesResult.status === "fulfilled") {
+      setContentTypes(contentTypesResult.value);
+    } else {
+      setContentTypes([]);
+    }
+
+    if (videosResult.status === "fulfilled") {
+      setVideos(videosResult.value);
+      setManagedVideoDraftById(buildManagedDraftMap(videosResult.value));
+    } else {
+      setVideos([]);
+      setManagedVideoDraftById({});
+    }
+
+    const loadFailures: string[] = [];
+
+    if (contentTypesResult.status === "rejected") {
+      loadFailures.push(
+        contentTypesResult.reason instanceof Error
+          ? contentTypesResult.reason.message
+          : "Unable to load content tags.",
+      );
+    }
+
+    if (videosResult.status === "rejected") {
+      loadFailures.push(
+        videosResult.reason instanceof Error
+          ? videosResult.reason.message
+          : "Unable to load admin videos.",
+      );
+    }
+
+    if (loadFailures.length > 0) {
+      throw new Error(loadFailures.join(" "));
+    }
   };
 
   const refreshAdminData = async (accessToken: string) => {
@@ -442,13 +474,13 @@ export function AdminContentPage() {
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.26em] text-brand-muted">
-              Day 4 admin controls
+              Admin controls
             </p>
             <h1 className="font-brand mt-3 bg-gradient-to-r from-foreground via-brand-muted to-accent bg-clip-text text-3xl text-transparent">
               Content Studio
             </h1>
             <p className="mt-3 text-sm leading-6 text-foreground/80">
-              Create videos, set readiness states, and assign one or more content tags.
+              Create video records, upload MP4 files to Mux, and assign one or more content tags.
             </p>
           </div>
 
@@ -474,8 +506,12 @@ export function AdminContentPage() {
 
         <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4">
           <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-muted">
-            Create video
+            Create video record
           </h2>
+          <p className="mt-2 text-xs text-foreground/70">
+            Step 1: save a title and tags for a video record. Step 2: upload the MP4 in the
+            Manage videos section below.
+          </p>
 
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             <label className="space-y-2">
@@ -515,7 +551,9 @@ export function AdminContentPage() {
             </label>
 
             <label className="space-y-2 md:col-span-2">
-              <span className="text-xs font-semibold text-foreground/80">Description</span>
+              <span className="text-xs font-semibold text-foreground/80">
+                Description (optional metadata)
+              </span>
               <textarea
                 value={createFormState.description}
                 onChange={(event) => {
@@ -531,7 +569,9 @@ export function AdminContentPage() {
             </label>
 
             <label className="space-y-2">
-              <span className="text-xs font-semibold text-foreground/80">Duration seconds</span>
+              <span className="text-xs font-semibold text-foreground/80">
+                Duration seconds (optional)
+              </span>
               <input
                 type="number"
                 min={0}
@@ -549,7 +589,9 @@ export function AdminContentPage() {
             </label>
 
             <label className="space-y-2">
-              <span className="text-xs font-semibold text-foreground/80">Thumbnail URL</span>
+              <span className="text-xs font-semibold text-foreground/80">
+                Thumbnail URL (optional)
+              </span>
               <input
                 type="url"
                 value={createFormState.thumbnailUrl}
@@ -569,28 +611,35 @@ export function AdminContentPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/70">
               Content tags (multi-select)
             </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {contentTypes.map((contentType) => {
-                const isSelected = createFormState.contentTypeIds.includes(contentType.id);
+            {contentTypes.length === 0 ? (
+              <p className="mt-2 text-xs text-accent-strong">
+                No content tags are loaded yet. Try Refresh. If this persists, verify the
+                /v1/content-types API is healthy.
+              </p>
+            ) : (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {contentTypes.map((contentType) => {
+                  const isSelected = createFormState.contentTypeIds.includes(contentType.id);
 
-                return (
-                  <button
-                    key={contentType.id}
-                    type="button"
-                    onClick={() => {
-                      handleToggleCreateTag(contentType.id);
-                    }}
-                    className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
-                      isSelected
-                        ? "border-brand/60 bg-brand/20 text-brand-muted"
-                        : "border-white/20 bg-black/35 text-foreground/75 hover:text-foreground"
-                    }`}
-                  >
-                    {contentType.name}
-                  </button>
-                );
-              })}
-            </div>
+                  return (
+                    <button
+                      key={contentType.id}
+                      type="button"
+                      onClick={() => {
+                        handleToggleCreateTag(contentType.id);
+                      }}
+                      className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                        isSelected
+                          ? "border-brand/60 bg-brand/20 text-brand-muted"
+                          : "border-white/20 bg-black/35 text-foreground/75 hover:text-foreground"
+                      }`}
+                    >
+                      {contentType.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <button
@@ -601,7 +650,7 @@ export function AdminContentPage() {
             disabled={isSubmittingCreate}
             className="mt-5 rounded-2xl bg-gradient-to-r from-accent to-brand px-4 py-2 text-sm font-extrabold text-background transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isSubmittingCreate ? "Creating..." : "Create video"}
+            {isSubmittingCreate ? "Creating..." : "Create video record"}
           </button>
         </div>
 
@@ -621,6 +670,9 @@ export function AdminContentPage() {
           <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-muted">
             Manage videos
           </h2>
+          <p className="mt-2 text-xs text-foreground/70">
+            Upload MP4 files to Mux per video, then adjust status and tag assignments.
+          </p>
 
           {isLoading ? (
             <p className="mt-3 text-sm text-foreground/75">Loading admin videos...</p>

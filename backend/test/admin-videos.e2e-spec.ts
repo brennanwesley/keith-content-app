@@ -33,13 +33,13 @@ type VideoRow = {
   id: string;
   title: string;
   description: string | null;
-  status: VideoStatus;
+  status: VideoStatus | 'published' | 'unpublished';
   owner_id: string | null;
-  duration_seconds: number | null;
+  duration_seconds: number | string | null;
   thumbnail_url: string | null;
-  published_at: string | null;
-  created_at: string;
-  updated_at: string;
+  published_at: string | Date | null;
+  created_at: string | Date;
+  updated_at: string | Date;
 };
 
 type VideoContentTypeRow = {
@@ -533,12 +533,14 @@ function createInMemorySupabaseService() {
     hockeyContentTypeId,
     baseballContentTypeId,
     soccerContentTypeId,
+    state,
     getServiceClient: () => serviceClient,
   };
 }
 
 describe('Admin video management flow (e2e)', () => {
   let app: INestApplication<App>;
+  let inMemoryState: InMemoryState;
   let adminUserId: string;
   let hockeyContentTypeId: string;
   let baseballContentTypeId: string;
@@ -546,6 +548,7 @@ describe('Admin video management flow (e2e)', () => {
 
   beforeEach(async () => {
     const inMemorySupabaseService = createInMemorySupabaseService();
+    inMemoryState = inMemorySupabaseService.state;
     adminUserId = inMemorySupabaseService.adminUserId;
     hockeyContentTypeId = inMemorySupabaseService.hockeyContentTypeId;
     baseballContentTypeId = inMemorySupabaseService.baseballContentTypeId;
@@ -636,6 +639,33 @@ describe('Admin video management flow (e2e)', () => {
     expect(parsedReadyVideos.data).toHaveLength(1);
     expect(parsedReadyVideos.data[0]?.id).toBe(createdVideoId);
     expect(parsedReadyVideos.data[0]?.status).toBe('ready');
+  });
+
+  it('coerces legacy admin video list payload fields instead of failing with 500', async () => {
+    const existingVideo = inMemoryState.videos[0];
+
+    if (!existingVideo) {
+      throw new Error('Expected seeded admin video row to exist.');
+    }
+
+    existingVideo.status = 'published';
+    existingVideo.duration_seconds = '90';
+    existingVideo.created_at = new Date('2026-03-01T00:00:00.000Z');
+    existingVideo.updated_at = new Date('2026-03-01T00:00:05.000Z');
+    existingVideo.published_at = new Date('2026-03-01T00:00:06.000Z');
+
+    const listVideosResponse = await request(app.getHttpServer())
+      .get('/v1/admin/videos')
+      .set('Authorization', 'Bearer token-admin')
+      .expect(200);
+
+    const parsedVideoList = adminVideoListEnvelopeSchema.parse(
+      listVideosResponse.body as unknown,
+    );
+
+    expect(parsedVideoList.data[0]?.status).toBe('ready');
+    expect(parsedVideoList.data[0]?.durationSeconds).toBe(90);
+    expect(parsedVideoList.data[0]?.publishedAt).toBe('2026-03-01T00:00:06.000Z');
   });
 
   it('forbids non-admin users from admin video management endpoints', async () => {
