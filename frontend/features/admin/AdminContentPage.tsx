@@ -3,13 +3,17 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
+  archiveAdminContentTag,
   createAdminVideo,
+  createAdminContentTag,
   createMuxDirectUpload,
-  getContentTypes,
+  listAdminContentTags,
   listAdminVideos,
+  unarchiveAdminContentTag,
   updateAdminVideo,
+  updateAdminContentTag,
+  type AdminContentTagSummary,
   type AdminVideoSummary,
-  type ContentTypeSummary,
   type VideoStatus,
 } from "@/lib/apiClient";
 import { clearAuthSession, readAuthSession } from "@/lib/authSession";
@@ -25,7 +29,7 @@ type CreateFormState = {
   status: VideoStatus;
   durationSeconds: string;
   thumbnailUrl: string;
-  contentTypeIds: string[];
+  contentTagIds: string[];
 };
 
 type ManagedVideoDraft = {
@@ -33,7 +37,17 @@ type ManagedVideoDraft = {
   description: string;
   thumbnailUrl: string;
   status: VideoStatus;
-  contentTypeIds: string[];
+  contentTagIds: string[];
+};
+
+type ManagedContentTagDraft = {
+  name: string;
+  description: string;
+};
+
+type CreateContentTagFormState = {
+  name: string;
+  description: string;
 };
 
 const videoStatuses: VideoStatus[] = [
@@ -50,8 +64,21 @@ const initialCreateFormState: CreateFormState = {
   status: "draft",
   durationSeconds: "",
   thumbnailUrl: "",
-  contentTypeIds: [],
+  contentTagIds: [],
 };
+
+const initialCreateContentTagFormState: CreateContentTagFormState = {
+  name: "",
+  description: "",
+};
+
+function sortContentTagsByName(
+  contentTags: AdminContentTagSummary[],
+): AdminContentTagSummary[] {
+  return [...contentTags].sort((firstTag, secondTag) =>
+    firstTag.name.localeCompare(secondTag.name),
+  );
+}
 
 function buildManagedDraftMap(
   videos: AdminVideoSummary[],
@@ -64,11 +91,26 @@ function buildManagedDraftMap(
       description: video.description ?? "",
       thumbnailUrl: video.thumbnailUrl ?? "",
       status: video.status,
-      contentTypeIds: [...video.contentTypeIds],
+      contentTagIds: [...video.contentTagIds],
     };
   }
 
   return draftByVideoId;
+}
+
+function buildManagedContentTagDraftMap(
+  contentTags: AdminContentTagSummary[],
+): Record<string, ManagedContentTagDraft> {
+  const draftByContentTagId: Record<string, ManagedContentTagDraft> = {};
+
+  for (const contentTag of contentTags) {
+    draftByContentTagId[contentTag.id] = {
+      name: contentTag.name,
+      description: contentTag.description,
+    };
+  }
+
+  return draftByContentTagId;
 }
 
 function formatDateTime(value: string | null): string {
@@ -87,16 +129,29 @@ function formatDateTime(value: string | null): string {
 
 export function AdminContentPage() {
   const [authSession, setAuthSession] = useState(() => readAuthSession());
-  const [contentTypes, setContentTypes] = useState<ContentTypeSummary[]>([]);
+  const [contentTags, setContentTags] = useState<AdminContentTagSummary[]>([]);
   const [videos, setVideos] = useState<AdminVideoSummary[]>([]);
   const [createFormState, setCreateFormState] =
     useState<CreateFormState>(initialCreateFormState);
+  const [createContentTagFormState, setCreateContentTagFormState] =
+    useState<CreateContentTagFormState>(initialCreateContentTagFormState);
   const [managedVideoDraftById, setManagedVideoDraftById] = useState<
     Record<string, ManagedVideoDraft>
   >({});
+  const [managedContentTagDraftById, setManagedContentTagDraftById] = useState<
+    Record<string, ManagedContentTagDraft>
+  >({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmittingCreate, setIsSubmittingCreate] = useState(false);
+  const [isSubmittingCreateContentTag, setIsSubmittingCreateContentTag] =
+    useState(false);
   const [updatingVideoId, setUpdatingVideoId] = useState<string | null>(null);
+  const [updatingContentTagId, setUpdatingContentTagId] = useState<string | null>(
+    null,
+  );
+  const [togglingContentTagId, setTogglingContentTagId] = useState<string | null>(
+    null,
+  );
   const [uploadingVideoId, setUploadingVideoId] = useState<string | null>(null);
   const [selectedUploadFileByVideoId, setSelectedUploadFileByVideoId] = useState<
     Record<string, File | null>
@@ -106,15 +161,19 @@ export function AdminContentPage() {
   const isAdmin = authSession?.user.accountType === "admin";
 
   const loadAdminData = async (accessToken: string) => {
-    const [contentTypesResult, videosResult] = await Promise.allSettled([
-      getContentTypes(),
+    const [contentTagsResult, videosResult] = await Promise.allSettled([
+      listAdminContentTags(accessToken),
       listAdminVideos(accessToken),
     ]);
 
-    if (contentTypesResult.status === "fulfilled") {
-      setContentTypes(contentTypesResult.value);
+    if (contentTagsResult.status === "fulfilled") {
+      setContentTags(sortContentTagsByName(contentTagsResult.value));
+      setManagedContentTagDraftById(
+        buildManagedContentTagDraftMap(contentTagsResult.value),
+      );
     } else {
-      setContentTypes([]);
+      setContentTags([]);
+      setManagedContentTagDraftById({});
     }
 
     if (videosResult.status === "fulfilled") {
@@ -127,10 +186,10 @@ export function AdminContentPage() {
 
     const loadFailures: string[] = [];
 
-    if (contentTypesResult.status === "rejected") {
+    if (contentTagsResult.status === "rejected") {
       loadFailures.push(
-        contentTypesResult.reason instanceof Error
-          ? contentTypesResult.reason.message
+        contentTagsResult.reason instanceof Error
+          ? contentTagsResult.reason.message
           : "Unable to load content tags.",
       );
     }
@@ -209,23 +268,23 @@ export function AdminContentPage() {
     };
   }, [authSession]);
 
-  const handleToggleCreateTag = (contentTypeId: string) => {
+  const handleToggleCreateTag = (contentTagId: string) => {
     setCreateFormState((current) => {
-      if (current.contentTypeIds.includes(contentTypeId)) {
+      if (current.contentTagIds.includes(contentTagId)) {
         return {
           ...current,
-          contentTypeIds: current.contentTypeIds.filter((id) => id !== contentTypeId),
+          contentTagIds: current.contentTagIds.filter((id) => id !== contentTagId),
         };
       }
 
       return {
         ...current,
-        contentTypeIds: [...current.contentTypeIds, contentTypeId],
+        contentTagIds: [...current.contentTagIds, contentTagId],
       };
     });
   };
 
-  const handleToggleManagedTag = (videoId: string, contentTypeId: string) => {
+  const handleToggleManagedTag = (videoId: string, contentTagId: string) => {
     setManagedVideoDraftById((currentDraftByVideoId) => {
       const currentDraft = currentDraftByVideoId[videoId];
 
@@ -233,18 +292,178 @@ export function AdminContentPage() {
         return currentDraftByVideoId;
       }
 
-      const nextIds = currentDraft.contentTypeIds.includes(contentTypeId)
-        ? currentDraft.contentTypeIds.filter((id) => id !== contentTypeId)
-        : [...currentDraft.contentTypeIds, contentTypeId];
+      const nextIds = currentDraft.contentTagIds.includes(contentTagId)
+        ? currentDraft.contentTagIds.filter((id) => id !== contentTagId)
+        : [...currentDraft.contentTagIds, contentTagId];
 
       return {
         ...currentDraftByVideoId,
         [videoId]: {
           ...currentDraft,
-          contentTypeIds: nextIds,
+          contentTagIds: nextIds,
         },
       };
     });
+  };
+
+  const upsertManagedContentTag = (contentTag: AdminContentTagSummary) => {
+    setContentTags((currentContentTags) =>
+      sortContentTagsByName([
+        ...currentContentTags.filter(
+          (existingContentTag) => existingContentTag.id !== contentTag.id,
+        ),
+        contentTag,
+      ]),
+    );
+
+    setManagedContentTagDraftById((currentDraftByContentTagId) => ({
+      ...currentDraftByContentTagId,
+      [contentTag.id]: {
+        name: contentTag.name,
+        description: contentTag.description,
+      },
+    }));
+  };
+
+  const handleCreateContentTag = async () => {
+    if (!authSession || !isAdmin) {
+      setOutcome({
+        type: "error",
+        message: "Only admin accounts can create content tags.",
+      });
+      return;
+    }
+
+    const trimmedName = createContentTagFormState.name.trim();
+
+    if (trimmedName.length < 2) {
+      setOutcome({
+        type: "error",
+        message: "Content tag name must be at least 2 characters.",
+      });
+      return;
+    }
+
+    setIsSubmittingCreateContentTag(true);
+    setOutcome(null);
+
+    try {
+      const trimmedDescription = createContentTagFormState.description.trim();
+      const createdContentTag = await createAdminContentTag(authSession.accessToken, {
+        name: trimmedName,
+        description: trimmedDescription,
+      });
+
+      upsertManagedContentTag(createdContentTag);
+      setCreateContentTagFormState(initialCreateContentTagFormState);
+      setOutcome({
+        type: "success",
+        message: `Created content tag "${createdContentTag.name}" successfully.`,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to create content tag right now.";
+
+      setOutcome({ type: "error", message });
+    } finally {
+      setIsSubmittingCreateContentTag(false);
+    }
+  };
+
+  const handleSaveContentTag = async (contentTagId: string) => {
+    if (!authSession || !isAdmin) {
+      setOutcome({
+        type: "error",
+        message: "Only admin accounts can update content tags.",
+      });
+      return;
+    }
+
+    const draft = managedContentTagDraftById[contentTagId];
+
+    if (!draft) {
+      return;
+    }
+
+    const trimmedName = draft.name.trim();
+
+    if (trimmedName.length < 2) {
+      setOutcome({
+        type: "error",
+        message: "Content tag name must be at least 2 characters.",
+      });
+      return;
+    }
+
+    setUpdatingContentTagId(contentTagId);
+    setOutcome(null);
+
+    try {
+      const trimmedDescription = draft.description.trim();
+      const updatedContentTag = await updateAdminContentTag(
+        authSession.accessToken,
+        contentTagId,
+        {
+          name: trimmedName,
+          description: trimmedDescription,
+        },
+      );
+
+      upsertManagedContentTag(updatedContentTag);
+      setOutcome({
+        type: "success",
+        message: `Updated content tag "${updatedContentTag.name}" successfully.`,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to update content tag right now.";
+
+      setOutcome({ type: "error", message });
+    } finally {
+      setUpdatingContentTagId(null);
+    }
+  };
+
+  const handleToggleContentTagActiveState = async (
+    contentTag: AdminContentTagSummary,
+  ) => {
+    if (!authSession || !isAdmin) {
+      setOutcome({
+        type: "error",
+        message: "Only admin accounts can manage content tag status.",
+      });
+      return;
+    }
+
+    setTogglingContentTagId(contentTag.id);
+    setOutcome(null);
+
+    try {
+      const updatedContentTag = contentTag.isActive
+        ? await archiveAdminContentTag(authSession.accessToken, contentTag.id)
+        : await unarchiveAdminContentTag(authSession.accessToken, contentTag.id);
+
+      upsertManagedContentTag(updatedContentTag);
+      setOutcome({
+        type: "success",
+        message: updatedContentTag.isActive
+          ? `Unarchived content tag "${updatedContentTag.name}".`
+          : `Archived content tag "${updatedContentTag.name}".`,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to update content tag status right now.";
+
+      setOutcome({ type: "error", message });
+    } finally {
+      setTogglingContentTagId(null);
+    }
   };
 
   const handleCreateVideo = async () => {
@@ -297,7 +516,7 @@ export function AdminContentPage() {
           createFormState.thumbnailUrl.trim().length > 0
             ? createFormState.thumbnailUrl.trim()
             : null,
-        contentTypeIds: createFormState.contentTypeIds,
+        contentTagIds: createFormState.contentTagIds,
       });
 
       const nextVideos = [createdVideo, ...videos];
@@ -356,7 +575,7 @@ export function AdminContentPage() {
         description: normalizedDescription.length > 0 ? normalizedDescription : null,
         status: draft.status,
         thumbnailUrl: normalizedThumbnailUrl.length > 0 ? normalizedThumbnailUrl : null,
-        contentTagIds: draft.contentTypeIds,
+        contentTagIds: draft.contentTagIds,
       });
 
       const nextVideos = videos.map((video) =>
@@ -632,30 +851,32 @@ export function AdminContentPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/70">
               Content tags (multi-select)
             </p>
-            {contentTypes.length === 0 ? (
+            {contentTags.length === 0 ? (
               <p className="mt-2 text-xs text-accent-strong">
-                No content tags are loaded yet. Try Refresh. If this persists, verify the
-                /v1/content-types API is healthy.
+                No content tags are available yet. Create one in Tag Library below.
               </p>
             ) : (
               <div className="mt-2 flex flex-wrap gap-2">
-                {contentTypes.map((contentType) => {
-                  const isSelected = createFormState.contentTypeIds.includes(contentType.id);
+                {contentTags.map((contentTag) => {
+                  const isSelected = createFormState.contentTagIds.includes(contentTag.id);
+                  const canSelect = contentTag.isActive || isSelected;
 
                   return (
                     <button
-                      key={contentType.id}
+                      key={contentTag.id}
                       type="button"
                       onClick={() => {
-                        handleToggleCreateTag(contentType.id);
+                        handleToggleCreateTag(contentTag.id);
                       }}
+                      disabled={!canSelect}
                       className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
                         isSelected
                           ? "border-brand/60 bg-brand/20 text-brand-muted"
                           : "border-white/20 bg-black/35 text-foreground/75 hover:text-foreground"
-                      }`}
+                      } ${!canSelect ? "cursor-not-allowed opacity-50" : ""}`}
                     >
-                      {contentType.name}
+                      {contentTag.name}
+                      {!contentTag.isActive ? " (archived)" : ""}
                     </button>
                   );
                 })}
@@ -674,6 +895,158 @@ export function AdminContentPage() {
             {isSubmittingCreate ? "Creating..." : "Create video record"}
           </button>
         </div>
+
+        <section className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-muted">
+            Tag Library
+          </h2>
+          <p className="mt-2 text-xs text-foreground/70">
+            Create, edit, archive, and unarchive content tags used for video assignment and
+            recommendation matching.
+          </p>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <label className="space-y-1">
+              <span className="text-xs font-semibold text-foreground/80">Tag name</span>
+              <input
+                type="text"
+                value={createContentTagFormState.name}
+                onChange={(event) => {
+                  setCreateContentTagFormState((current) => ({
+                    ...current,
+                    name: event.target.value,
+                  }));
+                }}
+                className="w-full rounded-xl border border-white/15 bg-surface-soft/80 px-3 py-2 text-sm outline-none transition focus:border-brand/70"
+                placeholder="Sick Move"
+              />
+            </label>
+
+            <label className="space-y-1 md:col-span-2">
+              <span className="text-xs font-semibold text-foreground/80">Description</span>
+              <textarea
+                value={createContentTagFormState.description}
+                onChange={(event) => {
+                  setCreateContentTagFormState((current) => ({
+                    ...current,
+                    description: event.target.value,
+                  }));
+                }}
+                rows={2}
+                className="w-full rounded-xl border border-white/15 bg-surface-soft/80 px-3 py-2 text-sm outline-none transition focus:border-brand/70"
+                placeholder="Optional guidance for admins and future recommendations."
+              />
+            </label>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              void handleCreateContentTag();
+            }}
+            disabled={isSubmittingCreateContentTag}
+            className="mt-4 rounded-xl border border-accent/35 bg-accent/15 px-3 py-2 text-xs font-semibold text-accent-strong transition hover:bg-accent/25 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isSubmittingCreateContentTag ? "Creating tag..." : "Create content tag"}
+          </button>
+
+          {contentTags.length === 0 ? (
+            <p className="mt-4 text-xs text-foreground/65">No content tags created yet.</p>
+          ) : (
+            <div className="mt-4 space-y-2">
+              {contentTags.map((contentTag) => {
+                const contentTagDraft = managedContentTagDraftById[contentTag.id] ?? {
+                  name: contentTag.name,
+                  description: contentTag.description,
+                };
+
+                return (
+                  <article
+                    key={contentTag.id}
+                    className="rounded-xl border border-white/10 bg-surface-soft/70 p-3"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs font-semibold uppercase tracking-[0.15em] text-foreground/70">
+                        {contentTag.slug}
+                      </p>
+                      <span
+                        className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${
+                          contentTag.isActive
+                            ? "border-brand/40 bg-brand/15 text-brand-muted"
+                            : "border-white/20 bg-black/35 text-foreground/60"
+                        }`}
+                      >
+                        {contentTag.isActive ? "active" : "archived"}
+                      </span>
+                    </div>
+
+                    <div className="mt-2 grid gap-2 md:grid-cols-2">
+                      <input
+                        type="text"
+                        value={contentTagDraft.name}
+                        onChange={(event) => {
+                          const nextName = event.target.value;
+                          setManagedContentTagDraftById((currentDraftByContentTagId) => ({
+                            ...currentDraftByContentTagId,
+                            [contentTag.id]: {
+                              ...contentTagDraft,
+                              name: nextName,
+                            },
+                          }));
+                        }}
+                        className="w-full rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-xs outline-none transition focus:border-brand/70"
+                      />
+
+                      <textarea
+                        value={contentTagDraft.description}
+                        onChange={(event) => {
+                          const nextDescription = event.target.value;
+                          setManagedContentTagDraftById((currentDraftByContentTagId) => ({
+                            ...currentDraftByContentTagId,
+                            [contentTag.id]: {
+                              ...contentTagDraft,
+                              description: nextDescription,
+                            },
+                          }));
+                        }}
+                        rows={2}
+                        className="w-full rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-xs outline-none transition focus:border-brand/70"
+                      />
+                    </div>
+
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void handleSaveContentTag(contentTag.id);
+                        }}
+                        disabled={updatingContentTagId === contentTag.id}
+                        className="rounded-lg border border-brand/35 bg-brand/15 px-3 py-1.5 text-[11px] font-semibold text-brand-muted transition hover:bg-brand/25 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {updatingContentTagId === contentTag.id ? "Saving..." : "Save tag"}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void handleToggleContentTagActiveState(contentTag);
+                        }}
+                        disabled={togglingContentTagId === contentTag.id}
+                        className="rounded-lg border border-white/20 bg-black/35 px-3 py-1.5 text-[11px] font-semibold text-foreground/80 transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {togglingContentTagId === contentTag.id
+                          ? "Updating..."
+                          : contentTag.isActive
+                            ? "Archive"
+                            : "Unarchive"}
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
         {outcome ? (
           <p
@@ -712,7 +1085,7 @@ export function AdminContentPage() {
                   description: video.description ?? "",
                   thumbnailUrl: video.thumbnailUrl ?? "",
                   status: video.status,
-                  contentTypeIds: [...video.contentTypeIds],
+                  contentTagIds: [...video.contentTagIds],
                 };
 
                 return (
@@ -868,24 +1241,27 @@ export function AdminContentPage() {
                       <div>
                         <p className="text-xs font-semibold text-foreground/80">Content tags</p>
                         <div className="mt-1 flex flex-wrap gap-2">
-                          {contentTypes.map((contentType) => {
-                            const selectedIds = managedVideoState.contentTypeIds;
-                            const isSelected = selectedIds.includes(contentType.id);
+                          {contentTags.map((contentTag) => {
+                            const selectedIds = managedVideoState.contentTagIds;
+                            const isSelected = selectedIds.includes(contentTag.id);
+                            const canSelect = contentTag.isActive || isSelected;
 
                             return (
                               <button
-                                key={`${video.id}-${contentType.id}`}
+                                key={`${video.id}-${contentTag.id}`}
                                 type="button"
                                 onClick={() => {
-                                  handleToggleManagedTag(video.id, contentType.id);
+                                  handleToggleManagedTag(video.id, contentTag.id);
                                 }}
+                                disabled={!canSelect}
                                 className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
                                   isSelected
                                     ? "border-brand/60 bg-brand/20 text-brand-muted"
                                     : "border-white/20 bg-black/35 text-foreground/75 hover:text-foreground"
-                                }`}
+                                } ${!canSelect ? "cursor-not-allowed opacity-50" : ""}`}
                               >
-                                {contentType.name}
+                                {contentTag.name}
+                                {!contentTag.isActive ? " (archived)" : ""}
                               </button>
                             );
                           })}

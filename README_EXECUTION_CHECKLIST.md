@@ -169,7 +169,7 @@ Blockers:
 - [x] 4.13 Keep metadata editable without re-upload:
   - Video title/description/thumbnail/status/tags remain mutable.
   - Upload pipeline remains decoupled from metadata editing.
-- [ ] 4.14 Add admin UI "Tag Library" panel:
+- [x] 4.14 Add admin UI "Tag Library" panel:
   - Create/edit/archive tags.
   - Assign tags during video create/manage flows.
 - [ ] 4.15 Backfill existing assignments:

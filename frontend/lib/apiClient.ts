@@ -212,6 +212,16 @@ export type ListAdminVideosQuery = {
   status?: VideoStatus;
 };
 
+export type CreateAdminContentTagRequest = {
+  name: string;
+  description?: string;
+};
+
+export type UpdateAdminContentTagRequest = {
+  name?: string;
+  description?: string | null;
+};
+
 export type CreateMuxDirectUploadRequest = {
   videoId: string;
   playbackPolicy?: 'public' | 'signed';
@@ -324,6 +334,95 @@ export async function signupWithEmail(
     },
     body: JSON.stringify(payload),
   });
+
+  return response.data;
+}
+
+export async function listAdminContentTags(
+  accessToken: string,
+): Promise<AdminContentTagSummary[]> {
+  const response = await requestJson<ApiEnvelope<AdminContentTagSummary[]>>(
+    '/v1/admin/content-tags',
+    {
+      cache: 'no-store',
+      headers: {
+        Authorization: `Bearer ${readBearerTokenOrThrow(accessToken)}`,
+      },
+    },
+  );
+
+  return response.data;
+}
+
+export async function createAdminContentTag(
+  accessToken: string,
+  payload: CreateAdminContentTagRequest,
+): Promise<AdminContentTagSummary> {
+  const response = await requestJson<ApiEnvelope<AdminContentTagSummary>>(
+    '/v1/admin/content-tags',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${readBearerTokenOrThrow(accessToken)}`,
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  return response.data;
+}
+
+export async function updateAdminContentTag(
+  accessToken: string,
+  contentTagId: string,
+  payload: UpdateAdminContentTagRequest,
+): Promise<AdminContentTagSummary> {
+  const response = await requestJson<ApiEnvelope<AdminContentTagSummary>>(
+    `/v1/admin/content-tags/${encodeURIComponent(contentTagId)}`,
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${readBearerTokenOrThrow(accessToken)}`,
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  return response.data;
+}
+
+export async function archiveAdminContentTag(
+  accessToken: string,
+  contentTagId: string,
+): Promise<AdminContentTagSummary> {
+  const response = await requestJson<ApiEnvelope<AdminContentTagSummary>>(
+    `/v1/admin/content-tags/${encodeURIComponent(contentTagId)}/archive`,
+    {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${readBearerTokenOrThrow(accessToken)}`,
+      },
+    },
+  );
+
+  return response.data;
+}
+
+export async function unarchiveAdminContentTag(
+  accessToken: string,
+  contentTagId: string,
+): Promise<AdminContentTagSummary> {
+  const response = await requestJson<ApiEnvelope<AdminContentTagSummary>>(
+    `/v1/admin/content-tags/${encodeURIComponent(contentTagId)}/unarchive`,
+    {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${readBearerTokenOrThrow(accessToken)}`,
+      },
+    },
+  );
 
   return response.data;
 }
