@@ -166,7 +166,7 @@ Blockers:
 - [x] 4.10 Add admin content-tag APIs (`/v1/admin/content-tags`): list, create, update, archive/unarchive (no hard delete).
 - [x] 4.11 Add admin video tag assignment support (`PUT /v1/admin/videos/:id`) for `contentTagIds` updates.
 - [x] 4.12 Keep publish flow flexible: allow status transition to `ready`, but exclude untagged videos from learner/parent feed queries.
-- [ ] 4.13 Keep metadata editable without re-upload:
+- [x] 4.13 Keep metadata editable without re-upload:
   - Video title/description/thumbnail/status/tags remain mutable.
   - Upload pipeline remains decoupled from metadata editing.
 - [ ] 4.14 Add admin UI "Tag Library" panel:

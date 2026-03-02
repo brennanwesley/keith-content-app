@@ -29,6 +29,9 @@ type CreateFormState = {
 };
 
 type ManagedVideoDraft = {
+  title: string;
+  description: string;
+  thumbnailUrl: string;
   status: VideoStatus;
   contentTypeIds: string[];
 };
@@ -57,6 +60,9 @@ function buildManagedDraftMap(
 
   for (const video of videos) {
     draftByVideoId[video.id] = {
+      title: video.title,
+      description: video.description ?? "",
+      thumbnailUrl: video.thumbnailUrl ?? "",
       status: video.status,
       contentTypeIds: [...video.contentTypeIds],
     };
@@ -329,13 +335,28 @@ export function AdminContentPage() {
       return;
     }
 
+    const normalizedTitle = draft.title.trim();
+
+    if (normalizedTitle.length < 3) {
+      setOutcome({
+        type: "error",
+        message: "Video title must be at least 3 characters before saving.",
+      });
+      return;
+    }
+
     setUpdatingVideoId(videoId);
     setOutcome(null);
 
     try {
+      const normalizedDescription = draft.description.trim();
+      const normalizedThumbnailUrl = draft.thumbnailUrl.trim();
       const updatedVideo = await updateAdminVideo(authSession.accessToken, videoId, {
+        title: normalizedTitle,
+        description: normalizedDescription.length > 0 ? normalizedDescription : null,
         status: draft.status,
-        contentTypeIds: draft.contentTypeIds,
+        thumbnailUrl: normalizedThumbnailUrl.length > 0 ? normalizedThumbnailUrl : null,
+        contentTagIds: draft.contentTypeIds,
       });
 
       const nextVideos = videos.map((video) =>
@@ -673,6 +694,10 @@ export function AdminContentPage() {
           <p className="mt-2 text-xs text-foreground/70">
             Upload MP4 files to Mux per video, then adjust status and tag assignments.
           </p>
+          <p className="mt-1 text-[11px] text-foreground/60">
+            Metadata edits save independently. You do not need to re-upload MP4 files to update title,
+            description, thumbnail, status, or tags.
+          </p>
 
           {isLoading ? (
             <p className="mt-3 text-sm text-foreground/75">Loading admin videos...</p>
@@ -682,6 +707,13 @@ export function AdminContentPage() {
             <div className="mt-4 space-y-3">
               {videos.map((video) => {
                 const managedDraft = managedVideoDraftById[video.id];
+                const managedVideoState: ManagedVideoDraft = managedDraft ?? {
+                  title: video.title,
+                  description: video.description ?? "",
+                  thumbnailUrl: video.thumbnailUrl ?? "",
+                  status: video.status,
+                  contentTypeIds: [...video.contentTypeIds],
+                };
 
                 return (
                   <article
@@ -690,9 +722,13 @@ export function AdminContentPage() {
                   >
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <h3 className="text-base font-semibold text-foreground">{video.title}</h3>
-                        {video.description ? (
-                          <p className="mt-1 text-xs text-foreground/70">{video.description}</p>
+                        <h3 className="text-base font-semibold text-foreground">
+                          {managedVideoState.title}
+                        </h3>
+                        {managedVideoState.description.trim().length > 0 ? (
+                          <p className="mt-1 text-xs text-foreground/70">
+                            {managedVideoState.description}
+                          </p>
                         ) : null}
                       </div>
                       <span className="rounded-full border border-brand/35 bg-brand/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-brand-muted">
@@ -742,20 +778,80 @@ export function AdminContentPage() {
                       ) : null}
                     </div>
 
+                    <div className="mt-3 grid gap-3 md:grid-cols-2">
+                      <label className="space-y-1 md:col-span-2">
+                        <span className="text-xs font-semibold text-foreground/80">Title</span>
+                        <input
+                          type="text"
+                          value={managedVideoState.title}
+                          onChange={(event) => {
+                            const nextTitle = event.target.value;
+                            setManagedVideoDraftById((currentDraftByVideoId) => ({
+                              ...currentDraftByVideoId,
+                              [video.id]: {
+                                ...managedVideoState,
+                                title: nextTitle,
+                              },
+                            }));
+                          }}
+                          className="w-full rounded-xl border border-white/15 bg-surface-soft/80 px-3 py-2 text-sm outline-none transition focus:border-brand/70"
+                          placeholder="Video title"
+                        />
+                      </label>
+
+                      <label className="space-y-1 md:col-span-2">
+                        <span className="text-xs font-semibold text-foreground/80">Description</span>
+                        <textarea
+                          value={managedVideoState.description}
+                          onChange={(event) => {
+                            const nextDescription = event.target.value;
+                            setManagedVideoDraftById((currentDraftByVideoId) => ({
+                              ...currentDraftByVideoId,
+                              [video.id]: {
+                                ...managedVideoState,
+                                description: nextDescription,
+                              },
+                            }));
+                          }}
+                          rows={2}
+                          className="w-full rounded-xl border border-white/15 bg-surface-soft/80 px-3 py-2 text-sm outline-none transition focus:border-brand/70"
+                          placeholder="Optional metadata shown in the studio and playback UI."
+                        />
+                      </label>
+
+                      <label className="space-y-1 md:col-span-2">
+                        <span className="text-xs font-semibold text-foreground/80">Thumbnail URL</span>
+                        <input
+                          type="url"
+                          value={managedVideoState.thumbnailUrl}
+                          onChange={(event) => {
+                            const nextThumbnailUrl = event.target.value;
+                            setManagedVideoDraftById((currentDraftByVideoId) => ({
+                              ...currentDraftByVideoId,
+                              [video.id]: {
+                                ...managedVideoState,
+                                thumbnailUrl: nextThumbnailUrl,
+                              },
+                            }));
+                          }}
+                          className="w-full rounded-xl border border-white/15 bg-surface-soft/80 px-3 py-2 text-sm outline-none transition focus:border-brand/70"
+                          placeholder="https://example.com/thumb.jpg"
+                        />
+                      </label>
+                    </div>
+
                     <div className="mt-3 grid gap-3 md:grid-cols-[200px,1fr]">
                       <label className="space-y-1">
                         <span className="text-xs font-semibold text-foreground/80">Status</span>
                         <select
-                          value={managedDraft?.status ?? video.status}
+                          value={managedVideoState.status}
                           onChange={(event) => {
                             const nextStatus = event.target.value as VideoStatus;
                             setManagedVideoDraftById((currentDraftByVideoId) => ({
                               ...currentDraftByVideoId,
                               [video.id]: {
+                                ...managedVideoState,
                                 status: nextStatus,
-                                contentTypeIds:
-                                  currentDraftByVideoId[video.id]?.contentTypeIds ??
-                                  [...video.contentTypeIds],
                               },
                             }));
                           }}
@@ -773,8 +869,7 @@ export function AdminContentPage() {
                         <p className="text-xs font-semibold text-foreground/80">Content tags</p>
                         <div className="mt-1 flex flex-wrap gap-2">
                           {contentTypes.map((contentType) => {
-                            const selectedIds =
-                              managedDraft?.contentTypeIds ?? video.contentTypeIds;
+                            const selectedIds = managedVideoState.contentTypeIds;
                             const isSelected = selectedIds.includes(contentType.id);
 
                             return (
