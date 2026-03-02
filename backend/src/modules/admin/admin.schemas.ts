@@ -53,6 +53,11 @@ const createAdminVideoSchema = z.object({
     .nullable()
     .optional(),
   publishedAt: nullableIsoDateTimeSchema.nullable().optional(),
+  contentTagIds: z
+    .array(contentTagIdSchema)
+    .max(50, 'You can assign up to 50 content tags to one video.')
+    .default([])
+    .transform((contentTagIds) => Array.from(new Set(contentTagIds))),
   contentTypeIds: z
     .array(contentTypeIdSchema)
     .max(25, 'You can assign up to 25 content types to one video.')
@@ -89,6 +94,17 @@ const updateAdminVideoSchema = z
       .nullable()
       .optional(),
     publishedAt: nullableIsoDateTimeSchema.nullable().optional(),
+    contentTagIds: z
+      .array(contentTagIdSchema)
+      .max(50, 'You can assign up to 50 content tags to one video.')
+      .optional()
+      .transform((contentTagIds) => {
+        if (!contentTagIds) {
+          return undefined;
+        }
+
+        return Array.from(new Set(contentTagIds));
+      }),
     contentTypeIds: z
       .array(contentTypeIdSchema)
       .max(25, 'You can assign up to 25 content types to one video.')
@@ -109,6 +125,7 @@ const updateAdminVideoSchema = z
       value.durationSeconds === undefined &&
       value.thumbnailUrl === undefined &&
       value.publishedAt === undefined &&
+      value.contentTagIds === undefined &&
       value.contentTypeIds === undefined
     ) {
       context.addIssue({

@@ -12,6 +12,14 @@ const readyVideoRowSchema = z.object({
   id: z.string().uuid(),
 });
 
+const videoContentTagRowSchema = z.object({
+  content_tag_id: z.string().uuid(),
+});
+
+const activeContentTagIdRowSchema = z.object({
+  id: z.string().uuid(),
+});
+
 const storedWatchEventRowSchema = z.object({
   id: z.string().uuid(),
   user_id: z.string().uuid(),
@@ -74,6 +82,67 @@ export class EngagementService {
     if (!parsedVideo.success) {
       throw new InternalServerErrorException(
         'Ready video payload was invalid.',
+      );
+    }
+
+    const { data: videoContentTagRows, error: videoContentTagError } =
+      await client
+        .from('video_content_tags')
+        .select('content_tag_id')
+        .eq('video_id', parsedVideo.data.id);
+
+    if (videoContentTagError) {
+      throw new InternalServerErrorException(
+        'Failed to verify video content tag assignments.',
+      );
+    }
+
+    const parsedVideoContentTagRows = z
+      .array(videoContentTagRowSchema)
+      .safeParse(videoContentTagRows ?? []);
+
+    if (!parsedVideoContentTagRows.success) {
+      throw new InternalServerErrorException(
+        'Video content tag assignment payload was invalid.',
+      );
+    }
+
+    if (parsedVideoContentTagRows.data.length === 0) {
+      throw new NotFoundException(
+        'Video was not found or is not ready for tracking.',
+      );
+    }
+
+    const contentTagIds = Array.from(
+      new Set(parsedVideoContentTagRows.data.map((row) => row.content_tag_id)),
+    );
+
+    const { data: activeContentTag, error: activeContentTagError } =
+      await client
+        .from('content_tags')
+        .select('id')
+        .eq('is_active', true)
+        .in('id', contentTagIds)
+        .maybeSingle();
+
+    if (activeContentTagError) {
+      throw new InternalServerErrorException(
+        'Failed to verify active content-tag state.',
+      );
+    }
+
+    if (!activeContentTag) {
+      throw new NotFoundException(
+        'Video was not found or is not ready for tracking.',
+      );
+    }
+
+    const parsedActiveContentTag =
+      activeContentTagIdRowSchema.safeParse(activeContentTag);
+
+    if (!parsedActiveContentTag.success) {
+      throw new InternalServerErrorException(
+        'Active content-tag payload was invalid.',
       );
     }
 

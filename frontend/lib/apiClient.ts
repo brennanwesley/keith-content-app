@@ -159,6 +159,16 @@ export type VideoStatus =
   | 'blocked'
   | 'archived';
 
+export type AdminContentTagSummary = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type AdminVideoSummary = {
   id: string;
   title: string;
@@ -170,6 +180,8 @@ export type AdminVideoSummary = {
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  contentTagIds: string[];
+  contentTags: AdminContentTagSummary[];
   contentTypeIds: string[];
   contentTypes: ContentTypeSummary[];
 };
@@ -181,6 +193,7 @@ export type CreateAdminVideoRequest = {
   durationSeconds?: number | null;
   thumbnailUrl?: string | null;
   publishedAt?: string | null;
+  contentTagIds?: string[];
   contentTypeIds?: string[];
 };
 
@@ -191,6 +204,7 @@ export type UpdateAdminVideoRequest = {
   durationSeconds?: number | null;
   thumbnailUrl?: string | null;
   publishedAt?: string | null;
+  contentTagIds?: string[];
   contentTypeIds?: string[];
 };
 

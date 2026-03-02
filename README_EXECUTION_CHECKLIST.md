@@ -164,8 +164,8 @@ Blockers:
   - `content_type_tag_mappings` (many-to-many bridge for recommendation candidate matching) with `weight` default `1.0`.
   - Indexing + uniqueness + RLS (admin write, authenticated read as needed).
 - [x] 4.10 Add admin content-tag APIs (`/v1/admin/content-tags`): list, create, update, archive/unarchive (no hard delete).
-- [ ] 4.11 Add admin video tag assignment support (`PUT /v1/admin/videos/:id`) for `contentTagIds` updates.
-- [ ] 4.12 Keep publish flow flexible: allow status transition to `ready`, but exclude untagged videos from learner/parent feed queries.
+- [x] 4.11 Add admin video tag assignment support (`PUT /v1/admin/videos/:id`) for `contentTagIds` updates.
+- [x] 4.12 Keep publish flow flexible: allow status transition to `ready`, but exclude untagged videos from learner/parent feed queries.
 - [ ] 4.13 Keep metadata editable without re-upload:
   - Video title/description/thumbnail/status/tags remain mutable.
   - Upload pipeline remains decoupled from metadata editing.

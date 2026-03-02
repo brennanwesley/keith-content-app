@@ -67,20 +67,10 @@ const videoRowSchema = z.object({
   updated_at: dateTimeLikeSchema,
 });
 
-const videoContentTypeRowSchema = z.object({
+const videoContentTagRowSchema = z.object({
   video_id: z.string().trim().min(1),
-  content_type_id: contentTypeIdSchema,
+  content_tag_id: contentTypeIdSchema,
   created_at: dateTimeLikeSchema,
-});
-
-const contentTypeRowSchema = z.object({
-  id: contentTypeIdSchema,
-  slug: z.string(),
-  name: z.string(),
-  description: z.string(),
-  icon_key: z.string().nullable().optional(),
-  sort_order: z.number().int(),
-  is_active: z.boolean(),
 });
 
 const contentTypeIdOnlyRowSchema = z.object({
@@ -112,6 +102,8 @@ export type AdminVideoSummary = {
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  contentTagIds: string[];
+  contentTags: AdminContentTagSummary[];
   contentTypeIds: string[];
   contentTypes: ContentTypeSummary[];
 };
@@ -187,7 +179,12 @@ export class AdminService {
     input: CreateAdminVideoInput,
   ): Promise<AdminVideoSummary> {
     await this.assertAdminAccount(adminUserId);
-    await this.assertContentTypesExist(input.contentTypeIds);
+    if (input.contentTypeIds.length > 0) {
+      await this.assertContentTypesExist(input.contentTypeIds);
+    }
+
+    const requestedContentTagIds = this.resolveCreateVideoContentTagIds(input);
+    await this.assertContentTagsExist(requestedContentTagIds);
 
     const client = this.getClientOrThrow();
 
@@ -226,11 +223,11 @@ export class AdminService {
       );
     }
 
-    if (input.contentTypeIds.length > 0) {
+    if (requestedContentTagIds.length > 0) {
       try {
-        await this.replaceVideoContentTypeAssignments(
+        await this.replaceVideoContentTagAssignments(
           parsedCreatedVideo.data.id,
-          input.contentTypeIds,
+          requestedContentTagIds,
         );
       } catch (error) {
         await client
@@ -243,7 +240,7 @@ export class AdminService {
         }
 
         throw new InternalServerErrorException(
-          'Failed to attach content types to created video.',
+          'Failed to attach content tags to created video.',
         );
       }
     }
@@ -335,9 +332,15 @@ export class AdminService {
 
     if (input.contentTypeIds !== undefined) {
       await this.assertContentTypesExist(input.contentTypeIds);
-      await this.replaceVideoContentTypeAssignments(
+    }
+
+    const requestedContentTagIds = this.resolveUpdateVideoContentTagIds(input);
+
+    if (requestedContentTagIds !== undefined) {
+      await this.assertContentTagsExist(requestedContentTagIds);
+      await this.replaceVideoContentTagAssignments(
         videoId,
-        input.contentTypeIds,
+        requestedContentTagIds,
       );
     }
 
@@ -484,95 +487,89 @@ export class AdminService {
     const client = this.getClientOrThrow();
     const videoIds = videoRows.map((videoRow) => videoRow.id);
 
-    const { data: videoContentTypeRows, error: videoContentTypeError } =
+    const { data: videoContentTagRows, error: videoContentTagError } =
       await client
-        .from('video_content_types')
-        .select('video_id, content_type_id, created_at')
+        .from('video_content_tags')
+        .select('video_id, content_tag_id, created_at')
         .in('video_id', videoIds)
         .order('created_at', { ascending: true });
 
-    if (videoContentTypeError) {
+    if (videoContentTagError) {
       throw new InternalServerErrorException(
-        'Failed to load video content type assignments.',
+        'Failed to load video content tag assignments.',
       );
     }
 
-    const parsedVideoContentTypeRows = z
-      .array(videoContentTypeRowSchema)
-      .safeParse(videoContentTypeRows ?? []);
+    const parsedVideoContentTagRows = z
+      .array(videoContentTagRowSchema)
+      .safeParse(videoContentTagRows ?? []);
 
-    if (!parsedVideoContentTypeRows.success) {
+    if (!parsedVideoContentTagRows.success) {
       throw new InternalServerErrorException(
-        'Video content type assignment payload was invalid.',
+        'Video content tag assignment payload was invalid.',
       );
     }
 
-    const videoContentTypeIdsByVideoId = new Map<string, string[]>();
+    const videoContentTagIdsByVideoId = new Map<string, string[]>();
 
     for (const videoId of videoIds) {
-      videoContentTypeIdsByVideoId.set(videoId, []);
+      videoContentTagIdsByVideoId.set(videoId, []);
     }
 
-    for (const row of parsedVideoContentTypeRows.data) {
-      const assignedContentTypeIds =
-        videoContentTypeIdsByVideoId.get(row.video_id) ?? [];
-      assignedContentTypeIds.push(row.content_type_id);
-      videoContentTypeIdsByVideoId.set(row.video_id, assignedContentTypeIds);
+    for (const row of parsedVideoContentTagRows.data) {
+      const assignedContentTagIds =
+        videoContentTagIdsByVideoId.get(row.video_id) ?? [];
+      assignedContentTagIds.push(row.content_tag_id);
+      videoContentTagIdsByVideoId.set(row.video_id, assignedContentTagIds);
     }
 
-    const uniqueContentTypeIds = Array.from(
-      new Set(
-        parsedVideoContentTypeRows.data.map((row) => row.content_type_id),
-      ),
+    const uniqueContentTagIds = Array.from(
+      new Set(parsedVideoContentTagRows.data.map((row) => row.content_tag_id)),
     );
 
-    const contentTypeById = new Map<string, ContentTypeSummary>();
+    const contentTagById = new Map<string, AdminContentTagSummary>();
 
-    if (uniqueContentTypeIds.length > 0) {
-      const { data: contentTypeRows, error: contentTypeError } = await client
-        .from('content_types')
-        .select('id, slug, name, description, icon_key, sort_order, is_active')
-        .in('id', uniqueContentTypeIds)
-        .order('sort_order', { ascending: true })
+    if (uniqueContentTagIds.length > 0) {
+      const { data: contentTagRows, error: contentTagError } = await client
+        .from('content_tags')
+        .select(
+          'id, slug, name, description, is_active, created_at, updated_at',
+        )
+        .in('id', uniqueContentTagIds)
         .order('name', { ascending: true });
 
-      if (contentTypeError) {
+      if (contentTagError) {
         throw new InternalServerErrorException(
-          'Failed to load content type labels for videos.',
+          'Failed to load content tag labels for videos.',
         );
       }
 
-      const parsedContentTypeRows = z
-        .array(contentTypeRowSchema)
-        .safeParse(contentTypeRows ?? []);
+      const parsedContentTagRows = z
+        .array(contentTagRowSchema)
+        .safeParse(contentTagRows ?? []);
 
-      if (!parsedContentTypeRows.success) {
+      if (!parsedContentTagRows.success) {
         throw new InternalServerErrorException(
-          'Video content type labels payload was invalid.',
+          'Video content tag labels payload was invalid.',
         );
       }
 
-      for (const row of parsedContentTypeRows.data) {
-        contentTypeById.set(row.id, {
-          id: row.id,
-          slug: row.slug,
-          name: row.name,
-          description: row.description,
-          iconKey: row.icon_key ?? null,
-          sortOrder: row.sort_order,
-          isActive: row.is_active,
-        });
+      for (const row of parsedContentTagRows.data) {
+        contentTagById.set(row.id, this.mapContentTagRow(row));
       }
     }
 
     return videoRows.map((videoRow) => {
-      const contentTypeIds =
-        videoContentTypeIdsByVideoId.get(videoRow.id) ?? [];
-      const contentTypes = contentTypeIds
-        .map((contentTypeId) => contentTypeById.get(contentTypeId))
-        .filter((contentType): contentType is ContentTypeSummary =>
-          Boolean(contentType),
+      const contentTagIds = videoContentTagIdsByVideoId.get(videoRow.id) ?? [];
+      const contentTags = contentTagIds
+        .map((contentTagId) => contentTagById.get(contentTagId))
+        .filter((contentTag): contentTag is AdminContentTagSummary =>
+          Boolean(contentTag),
         );
+
+      const contentTypes = contentTags.map((contentTag, index) =>
+        this.mapContentTagSummaryToLegacyContentTypeSummary(contentTag, index),
+      );
 
       return {
         id: videoRow.id,
@@ -585,7 +582,9 @@ export class AdminService {
         publishedAt: videoRow.published_at,
         createdAt: videoRow.created_at,
         updatedAt: videoRow.updated_at,
-        contentTypeIds,
+        contentTagIds,
+        contentTags,
+        contentTypeIds: contentTagIds,
         contentTypes,
       };
     });
@@ -658,41 +657,100 @@ export class AdminService {
     }
   }
 
-  private async replaceVideoContentTypeAssignments(
+  private async assertContentTagsExist(contentTagIds: string[]): Promise<void> {
+    const uniqueContentTagIds = Array.from(new Set(contentTagIds));
+
+    if (uniqueContentTagIds.length === 0) {
+      return;
+    }
+
+    const client = this.getClientOrThrow();
+
+    const { data: contentTagRows, error: contentTagError } = await client
+      .from('content_tags')
+      .select('id')
+      .in('id', uniqueContentTagIds);
+
+    if (contentTagError) {
+      throw new InternalServerErrorException('Failed to verify content tags.');
+    }
+
+    const parsedContentTagRows = z
+      .array(contentTypeIdOnlyRowSchema)
+      .safeParse(contentTagRows ?? []);
+
+    if (!parsedContentTagRows.success) {
+      throw new InternalServerErrorException(
+        'Content tag verification payload was invalid.',
+      );
+    }
+
+    if (parsedContentTagRows.data.length !== uniqueContentTagIds.length) {
+      throw new BadRequestException(
+        'One or more selected content tags are invalid.',
+      );
+    }
+  }
+
+  private async replaceVideoContentTagAssignments(
     videoId: string,
-    contentTypeIds: string[],
+    contentTagIds: string[],
   ): Promise<void> {
     const client = this.getClientOrThrow();
 
     const { error: deleteError } = await client
-      .from('video_content_types')
+      .from('video_content_tags')
       .delete()
       .eq('video_id', videoId);
 
     if (deleteError) {
       throw new InternalServerErrorException(
-        'Failed to clear existing video content type assignments.',
+        'Failed to clear existing video content tag assignments.',
       );
     }
 
-    if (contentTypeIds.length === 0) {
+    if (contentTagIds.length === 0) {
       return;
     }
 
     const { error: insertError } = await client
-      .from('video_content_types')
+      .from('video_content_tags')
       .insert(
-        contentTypeIds.map((contentTypeId) => ({
+        contentTagIds.map((contentTagId) => ({
           video_id: videoId,
-          content_type_id: contentTypeId,
+          content_tag_id: contentTagId,
         })),
       );
 
     if (insertError) {
       throw new InternalServerErrorException(
-        'Failed to save video content type assignments.',
+        'Failed to save video content tag assignments.',
       );
     }
+  }
+
+  private resolveCreateVideoContentTagIds(
+    input: CreateAdminVideoInput,
+  ): string[] {
+    if (input.contentTagIds.length > 0) {
+      return input.contentTagIds;
+    }
+
+    return input.contentTypeIds;
+  }
+
+  private resolveUpdateVideoContentTagIds(
+    input: UpdateAdminVideoInput,
+  ): string[] | undefined {
+    if (input.contentTagIds !== undefined) {
+      return input.contentTagIds;
+    }
+
+    if (input.contentTypeIds !== undefined) {
+      return input.contentTypeIds;
+    }
+
+    return undefined;
   }
 
   private mapContentTagRow(
@@ -706,6 +764,21 @@ export class AdminService {
       isActive: row.is_active,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+    };
+  }
+
+  private mapContentTagSummaryToLegacyContentTypeSummary(
+    contentTag: AdminContentTagSummary,
+    sortOrder: number,
+  ): ContentTypeSummary {
+    return {
+      id: contentTag.id,
+      slug: contentTag.slug,
+      name: contentTag.name,
+      description: contentTag.description,
+      iconKey: null,
+      sortOrder,
+      isActive: contentTag.isActive,
     };
   }
 

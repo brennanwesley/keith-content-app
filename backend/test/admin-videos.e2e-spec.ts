@@ -11,8 +11,9 @@ type VideoStatus = 'draft' | 'processing' | 'ready' | 'blocked' | 'archived';
 type SupportedTable =
   | 'profiles'
   | 'content_types'
+  | 'content_tags'
   | 'videos'
-  | 'video_content_types';
+  | 'video_content_tags';
 
 type ProfileRow = {
   id: string;
@@ -44,8 +45,18 @@ type VideoRow = {
 
 type VideoContentTypeRow = {
   video_id: string;
-  content_type_id: string;
+  content_tag_id: string;
   created_at: string;
+};
+
+type ContentTagRow = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 };
 
 type InMemoryUser = {
@@ -56,8 +67,9 @@ type InMemoryUser = {
 type InMemoryState = {
   profiles: ProfileRow[];
   contentTypes: ContentTypeRow[];
+  contentTags: ContentTagRow[];
   videos: VideoRow[];
-  videoContentTypes: VideoContentTypeRow[];
+  videoContentTags: VideoContentTypeRow[];
   timestamps: number;
   videoCounter: number;
 };
@@ -90,6 +102,18 @@ const adminVideoSummarySchema = z.object({
   publishedAt: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  contentTagIds: z.array(contentTypeIdSchema),
+  contentTags: z.array(
+    z.object({
+      id: contentTypeIdSchema,
+      slug: z.string(),
+      name: z.string(),
+      description: z.string(),
+      isActive: z.boolean(),
+      createdAt: z.string(),
+      updatedAt: z.string(),
+    }),
+  ),
   contentTypeIds: z.array(contentTypeIdSchema),
   contentTypes: z.array(
     z.object({
@@ -180,6 +204,35 @@ function createInMemorySupabaseService() {
         is_active: true,
       },
     ],
+    contentTags: [
+      {
+        id: hockeyContentTypeId,
+        slug: 'youth-hockey',
+        name: 'Youth Hockey',
+        description: 'Skating and positional drills.',
+        is_active: true,
+        created_at: '2026-03-01T00:00:00.000Z',
+        updated_at: '2026-03-01T00:00:00.000Z',
+      },
+      {
+        id: baseballContentTypeId,
+        slug: 'youth-baseball',
+        name: 'Youth Baseball',
+        description: 'Batting and infield reps.',
+        is_active: true,
+        created_at: '2026-03-01T00:00:00.000Z',
+        updated_at: '2026-03-01T00:00:00.000Z',
+      },
+      {
+        id: soccerContentTypeId,
+        slug: 'youth-soccer',
+        name: 'Youth Soccer',
+        description: 'Ball control and transition movement.',
+        is_active: true,
+        created_at: '2026-03-01T00:00:00.000Z',
+        updated_at: '2026-03-01T00:00:00.000Z',
+      },
+    ],
     videos: [
       {
         id: '55555555-5555-4555-8555-555555555555',
@@ -194,10 +247,10 @@ function createInMemorySupabaseService() {
         updated_at: '2026-03-01T00:00:00.000Z',
       },
     ],
-    videoContentTypes: [
+    videoContentTags: [
       {
         video_id: '55555555-5555-4555-8555-555555555555',
-        content_type_id: hockeyContentTypeId,
+        content_tag_id: hockeyContentTypeId,
         created_at: '2026-03-01T00:00:01.000Z',
       },
     ],
@@ -234,11 +287,15 @@ function createInMemorySupabaseService() {
       return state.contentTypes;
     }
 
+    if (table === 'content_tags') {
+      return state.contentTags;
+    }
+
     if (table === 'videos') {
       return state.videos;
     }
 
-    return state.videoContentTypes;
+    return state.videoContentTags;
   };
 
   class InMemoryQueryBuilder implements PromiseLike<QueryExecutionResult> {
@@ -389,7 +446,7 @@ function createInMemorySupabaseService() {
         });
       }
 
-      if (this.table === 'video_content_types') {
+      if (this.table === 'video_content_tags') {
         const tableRows = getTableRows(
           this.table,
         ) as unknown as VideoContentTypeRow[];
@@ -397,7 +454,7 @@ function createInMemorySupabaseService() {
         return this.pendingInsertRows.map((pendingRow) => {
           const insertedRow: VideoContentTypeRow = {
             video_id: String(pendingRow.video_id),
-            content_type_id: String(pendingRow.content_type_id),
+            content_tag_id: String(pendingRow.content_tag_id),
             created_at: nextTimestamp(),
           };
 
@@ -434,7 +491,7 @@ function createInMemorySupabaseService() {
     }
 
     private executeDelete(): Record<string, unknown>[] {
-      if (this.table !== 'video_content_types' && this.table !== 'videos') {
+      if (this.table !== 'video_content_tags' && this.table !== 'videos') {
         throw new Error(
           `Delete is unsupported for table ${this.table} in this test.`,
         );
@@ -454,8 +511,8 @@ function createInMemorySupabaseService() {
         }
       }
 
-      if (this.table === 'video_content_types') {
-        state.videoContentTypes = nextRows as VideoContentTypeRow[];
+      if (this.table === 'video_content_tags') {
+        state.videoContentTags = nextRows as VideoContentTypeRow[];
       } else {
         state.videos = nextRows as VideoRow[];
       }
@@ -589,6 +646,10 @@ describe('Admin video management flow (e2e)', () => {
     const createdVideoId = parsedCreateVideo.data.id;
 
     expect(parsedCreateVideo.data.ownerId).toBe(adminUserId);
+    expect(parsedCreateVideo.data.contentTagIds).toEqual([
+      hockeyContentTypeId,
+      baseballContentTypeId,
+    ]);
     expect(parsedCreateVideo.data.contentTypeIds).toEqual([
       hockeyContentTypeId,
       baseballContentTypeId,
@@ -612,7 +673,7 @@ describe('Admin video management flow (e2e)', () => {
       .set('Authorization', 'Bearer token-admin')
       .send({
         status: 'ready',
-        contentTypeIds: [baseballContentTypeId, soccerContentTypeId],
+        contentTagIds: [baseballContentTypeId, soccerContentTypeId],
       })
       .expect(200);
 
@@ -621,6 +682,10 @@ describe('Admin video management flow (e2e)', () => {
     );
 
     expect(parsedUpdatedVideo.data.status).toBe('ready');
+    expect(parsedUpdatedVideo.data.contentTagIds).toEqual([
+      baseballContentTypeId,
+      soccerContentTypeId,
+    ]);
     expect(parsedUpdatedVideo.data.contentTypeIds).toEqual([
       baseballContentTypeId,
       soccerContentTypeId,
