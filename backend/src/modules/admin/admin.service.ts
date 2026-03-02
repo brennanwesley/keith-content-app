@@ -11,8 +11,10 @@ import { contentTypeIdSchema } from '../content/content-id.schema';
 import type { ContentTypeSummary } from '../content/content.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import type {
+  CreateAdminContentTagInput,
   CreateAdminVideoInput,
   ListAdminVideosQuery,
+  UpdateAdminContentTagInput,
   UpdateAdminVideoInput,
   VideoStatus,
 } from './admin.schemas';
@@ -48,7 +50,9 @@ const integerLikeSchema = z.union([
     .transform((value) => Number(value)),
 ]);
 
-const dateTimeLikeSchema = z.coerce.date().transform((value) => value.toISOString());
+const dateTimeLikeSchema = z.coerce
+  .date()
+  .transform((value) => value.toISOString());
 
 const videoRowSchema = z.object({
   id: z.string().trim().min(1),
@@ -83,6 +87,20 @@ const contentTypeIdOnlyRowSchema = z.object({
   id: contentTypeIdSchema,
 });
 
+const contentTagRowSchema = z.object({
+  id: contentTypeIdSchema,
+  slug: z.string(),
+  name: z.string(),
+  description: z.string(),
+  is_active: z.boolean(),
+  created_at: dateTimeLikeSchema,
+  updated_at: dateTimeLikeSchema,
+});
+
+const contentTagSlugRowSchema = z.object({
+  slug: z.string(),
+});
+
 export type AdminVideoSummary = {
   id: string;
   title: string;
@@ -96,6 +114,16 @@ export type AdminVideoSummary = {
   updatedAt: string;
   contentTypeIds: string[];
   contentTypes: ContentTypeSummary[];
+};
+
+export type AdminContentTagSummary = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 };
 
 @Injectable()
@@ -324,6 +352,128 @@ export class AdminService {
     return summaries[0];
   }
 
+  async listContentTags(
+    adminUserId: string,
+  ): Promise<AdminContentTagSummary[]> {
+    await this.assertAdminAccount(adminUserId);
+    const client = this.getClientOrThrow();
+
+    const { data: contentTagRows, error: contentTagsError } = await client
+      .from('content_tags')
+      .select('id, slug, name, description, is_active, created_at, updated_at')
+      .order('name', { ascending: true });
+
+    if (contentTagsError) {
+      throw new InternalServerErrorException('Failed to load content tags.');
+    }
+
+    const parsedContentTagRows = z
+      .array(contentTagRowSchema)
+      .safeParse(contentTagRows ?? []);
+
+    if (!parsedContentTagRows.success) {
+      throw new InternalServerErrorException(
+        'Content tags payload was invalid.',
+      );
+    }
+
+    return parsedContentTagRows.data.map((row) => this.mapContentTagRow(row));
+  }
+
+  async createContentTag(
+    adminUserId: string,
+    input: CreateAdminContentTagInput,
+  ): Promise<AdminContentTagSummary> {
+    await this.assertAdminAccount(adminUserId);
+    const client = this.getClientOrThrow();
+    const nextSlug = await this.generateUniqueContentTagSlug(input.name);
+
+    const { data: createdContentTag, error: createError } = await client
+      .from('content_tags')
+      .insert({
+        slug: nextSlug,
+        name: input.name,
+        description: input.description,
+        is_active: true,
+      })
+      .select('id, slug, name, description, is_active, created_at, updated_at')
+      .single();
+
+    if (createError || !createdContentTag) {
+      throw new InternalServerErrorException('Failed to create content tag.');
+    }
+
+    const parsedCreatedContentTag =
+      contentTagRowSchema.safeParse(createdContentTag);
+
+    if (!parsedCreatedContentTag.success) {
+      throw new InternalServerErrorException(
+        'Created content tag payload was invalid.',
+      );
+    }
+
+    return this.mapContentTagRow(parsedCreatedContentTag.data);
+  }
+
+  async updateContentTag(
+    adminUserId: string,
+    contentTagId: string,
+    input: UpdateAdminContentTagInput,
+  ): Promise<AdminContentTagSummary> {
+    await this.assertAdminAccount(adminUserId);
+    const client = this.getClientOrThrow();
+
+    const contentTagPatch: Record<string, unknown> = {};
+
+    if (input.name !== undefined) {
+      contentTagPatch.name = input.name;
+    }
+
+    if (input.description !== undefined) {
+      contentTagPatch.description = input.description ?? '';
+    }
+
+    const { data: updatedContentTag, error: updateError } = await client
+      .from('content_tags')
+      .update(contentTagPatch)
+      .eq('id', contentTagId)
+      .select('id, slug, name, description, is_active, created_at, updated_at')
+      .maybeSingle();
+
+    if (updateError) {
+      throw new InternalServerErrorException('Failed to update content tag.');
+    }
+
+    if (!updatedContentTag) {
+      throw new NotFoundException('Content tag was not found.');
+    }
+
+    const parsedUpdatedContentTag =
+      contentTagRowSchema.safeParse(updatedContentTag);
+
+    if (!parsedUpdatedContentTag.success) {
+      throw new InternalServerErrorException(
+        'Updated content tag payload was invalid.',
+      );
+    }
+
+    return this.mapContentTagRow(parsedUpdatedContentTag.data);
+  }
+
+  async archiveContentTag(
+    adminUserId: string,
+    contentTagId: string,
+  ): Promise<AdminContentTagSummary> {
+    return this.setContentTagActiveState(adminUserId, contentTagId, false);
+  }
+
+  async unarchiveContentTag(
+    adminUserId: string,
+    contentTagId: string,
+  ): Promise<AdminContentTagSummary> {
+    return this.setContentTagActiveState(adminUserId, contentTagId, true);
+  }
+
   private async hydrateVideoSummaries(
     videoRows: z.infer<typeof videoRowSchema>[],
   ): Promise<AdminVideoSummary[]> {
@@ -543,6 +693,113 @@ export class AdminService {
         'Failed to save video content type assignments.',
       );
     }
+  }
+
+  private mapContentTagRow(
+    row: z.infer<typeof contentTagRowSchema>,
+  ): AdminContentTagSummary {
+    return {
+      id: row.id,
+      slug: row.slug,
+      name: row.name,
+      description: row.description,
+      isActive: row.is_active,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  }
+
+  private async setContentTagActiveState(
+    adminUserId: string,
+    contentTagId: string,
+    isActive: boolean,
+  ): Promise<AdminContentTagSummary> {
+    await this.assertAdminAccount(adminUserId);
+    const client = this.getClientOrThrow();
+
+    const { data: updatedContentTag, error: updateError } = await client
+      .from('content_tags')
+      .update({
+        is_active: isActive,
+      })
+      .eq('id', contentTagId)
+      .select('id, slug, name, description, is_active, created_at, updated_at')
+      .maybeSingle();
+
+    if (updateError) {
+      throw new InternalServerErrorException(
+        'Failed to update content tag active state.',
+      );
+    }
+
+    if (!updatedContentTag) {
+      throw new NotFoundException('Content tag was not found.');
+    }
+
+    const parsedUpdatedContentTag =
+      contentTagRowSchema.safeParse(updatedContentTag);
+
+    if (!parsedUpdatedContentTag.success) {
+      throw new InternalServerErrorException(
+        'Updated content tag active state payload was invalid.',
+      );
+    }
+
+    return this.mapContentTagRow(parsedUpdatedContentTag.data);
+  }
+
+  private async generateUniqueContentTagSlug(contentTagName: string) {
+    const client = this.getClientOrThrow();
+    const baseSlug = this.normalizeContentTagNameToSlug(contentTagName);
+
+    const { data: contentTagSlugRows, error: contentTagSlugsError } =
+      await client.from('content_tags').select('slug');
+
+    if (contentTagSlugsError) {
+      throw new InternalServerErrorException(
+        'Failed to verify content tag slug uniqueness.',
+      );
+    }
+
+    const parsedContentTagSlugRows = z
+      .array(contentTagSlugRowSchema)
+      .safeParse(contentTagSlugRows ?? []);
+
+    if (!parsedContentTagSlugRows.success) {
+      throw new InternalServerErrorException(
+        'Content tag slug payload was invalid.',
+      );
+    }
+
+    const existingSlugSet = new Set(
+      parsedContentTagSlugRows.data.map((row) => row.slug.toLowerCase()),
+    );
+
+    let nextSlug = baseSlug;
+    let slugSuffix = 2;
+
+    while (existingSlugSet.has(nextSlug.toLowerCase())) {
+      nextSlug = `${baseSlug}-${slugSuffix}`;
+      slugSuffix += 1;
+    }
+
+    return nextSlug;
+  }
+
+  private normalizeContentTagNameToSlug(contentTagName: string): string {
+    const normalizedSlug = contentTagName
+      .toLowerCase()
+      .trim()
+      .replace(/['’]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 60);
+
+    if (normalizedSlug.length === 0) {
+      return 'content-tag';
+    }
+
+    return normalizedSlug;
   }
 
   private async assertAdminAccount(userId: string): Promise<void> {

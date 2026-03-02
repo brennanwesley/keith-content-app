@@ -147,18 +147,44 @@ Blockers:
 
 ### Build steps
 - [x] 4.1 Build admin content create/manage flow (admin video create/list/update API + frontend admin studio route shipped).
-- [x] 4.2 Enable multiple content-type tags per video in API/admin flows (join-table assignments now handled on create/update).
+- [x] 4.2 Enable multiple content-type assignments per video in API/admin flows (temporary bridge until dedicated content-tag taxonomy ships).
 - [x] 4.3 Implement Mux direct upload flow (admin-authenticated `/v1/mux/uploads` + frontend file upload action to Mux direct URL).
 - [x] 4.4 Implement webhook handling for processing status updates (`/v1/mux/webhooks` signature verification + asset status persistence).
 - [ ] 4.5 Complete lifecycle handling (`draft -> processing -> ready`) in backend workflows.
 - [ ] 4.6 Dependency hardening: feed/video catalog IDs must come from backend (not static client IDs) to support reliable joins for watch history and analytics.
 - [ ] 4.7 Desktop-first admin UI hardening pass (keep existing mobile layout intact; improve desktop content-studio ergonomics with a simple, scalable structure we can extend later).
 
+### Day 4 continuation plan - Taxonomy split and admin tag management (incremental)
+- [x] 4.8 Lock contracts and naming:
+  - `content_types` = broad learner-facing interests/topics selected by users.
+  - `content_tags` = granular admin-assigned video descriptors for recommendation features.
+- [x] 4.9 Add migration for dedicated tag model:
+  - `content_tags` (`id`, `slug`, `name`, `description`, `is_active`, timestamps).
+  - `video_content_tags` (many-to-many between `videos` and `content_tags`).
+  - `content_type_tag_mappings` (many-to-many bridge for recommendation candidate matching) with `weight` default `1.0`.
+  - Indexing + uniqueness + RLS (admin write, authenticated read as needed).
+- [x] 4.10 Add admin content-tag APIs (`/v1/admin/content-tags`): list, create, update, archive/unarchive (no hard delete).
+- [ ] 4.11 Add admin video tag assignment support (`PUT /v1/admin/videos/:id`) for `contentTagIds` updates.
+- [ ] 4.12 Keep publish flow flexible: allow status transition to `ready`, but exclude untagged videos from learner/parent feed queries.
+- [ ] 4.13 Keep metadata editable without re-upload:
+  - Video title/description/thumbnail/status/tags remain mutable.
+  - Upload pipeline remains decoupled from metadata editing.
+- [ ] 4.14 Add admin UI "Tag Library" panel:
+  - Create/edit/archive tags.
+  - Assign tags during video create/manage flows.
+- [ ] 4.15 Backfill existing assignments:
+  - One-time migration script maps current `video_content_types` links into initial `content_tags` so existing admin data remains usable.
+- [ ] 4.16 Replace static feed source with backend catalog contract so status + taxonomy rules are enforced by API responses.
+
 ### Test and validation
 - [ ] Admin can upload and publish content.
+- [ ] Admin can create, edit, and archive content tags without re-uploading videos.
+- [ ] Admin can update video descriptions/metadata independently of Mux upload lifecycle.
 - [ ] Admin desktop workflow is efficient for create/edit/upload actions while mobile remains functional.
-- [ ] Feed only returns `ready` content.
-- [ ] Multi-tag assignment appears correctly in content queries.
+- [ ] Feed only returns backend `ready` content for non-admin users.
+- [ ] `ready` videos without tags are excluded from learner/parent feed responses.
+- [ ] Tag-to-video and type-to-tag mappings return expected results for recommendation candidate filtering.
+- [ ] New `content_type_tag_mappings.weight` defaults to `1.0` when omitted.
 
 ### Daily sign-off
 - [ ] Day 4 acceptance criteria met.
@@ -171,7 +197,7 @@ Blockers:
 
 ### Build steps
 - [ ] 5.1 Integrate production playback source and preloading behavior (current feed remains staged/static youth hockey clips).
-- [ ] 5.2 Implement tag-based filtering and simple feed ordering.
+- [ ] 5.2 Implement filtering pipeline: learner-selected `content_types` -> mapped `content_tags` -> eligible `ready` videos.
 - [ ] 5.3 Implement watch event ingestion (batched) against `watch_events`.
 - [ ] 5.4 Build learner watch history grouped by content type.
 - [ ] 5.5 Build parent child-history view and usage stats from watch/progress/session data.

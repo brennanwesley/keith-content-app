@@ -665,7 +665,9 @@ describe('Admin video management flow (e2e)', () => {
 
     expect(parsedVideoList.data[0]?.status).toBe('ready');
     expect(parsedVideoList.data[0]?.durationSeconds).toBe(90);
-    expect(parsedVideoList.data[0]?.publishedAt).toBe('2026-03-01T00:00:06.000Z');
+    expect(parsedVideoList.data[0]?.publishedAt).toBe(
+      '2026-03-01T00:00:06.000Z',
+    );
   });
 
   it('forbids non-admin users from admin video management endpoints', async () => {

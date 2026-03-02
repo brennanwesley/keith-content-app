@@ -2,6 +2,9 @@ import { BadRequestException } from '@nestjs/common';
 import { z } from 'zod';
 import { contentTypeIdSchema } from '../content/content-id.schema';
 
+const databaseUuidRegex =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export const videoStatusSchema = z.enum([
   'draft',
   'processing',
@@ -11,6 +14,9 @@ export const videoStatusSchema = z.enum([
 ]);
 
 const videoIdSchema = z.string().uuid('Video ID must be a valid UUID.');
+const contentTagIdSchema = z
+  .string()
+  .regex(databaseUuidRegex, 'Content tag ID must be a valid UUID.');
 
 const nullableIsoDateTimeSchema = z
   .string()
@@ -116,16 +122,100 @@ const listAdminVideosQuerySchema = z.object({
   status: videoStatusSchema.optional(),
 });
 
+const createAdminContentTagSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, 'Content tag name must be at least 2 characters.')
+    .max(80, 'Content tag name must be at most 80 characters.'),
+  description: z
+    .string()
+    .trim()
+    .max(500, 'Content tag description must be at most 500 characters.')
+    .optional()
+    .default(''),
+});
+
+const updateAdminContentTagSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(2, 'Content tag name must be at least 2 characters.')
+      .max(80, 'Content tag name must be at most 80 characters.')
+      .optional(),
+    description: z
+      .string()
+      .trim()
+      .max(500, 'Content tag description must be at most 500 characters.')
+      .nullable()
+      .optional(),
+  })
+  .superRefine((value, context) => {
+    if (value.name === undefined && value.description === undefined) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Provide at least one field to update.',
+      });
+    }
+  });
+
 export type CreateAdminVideoInput = z.infer<typeof createAdminVideoSchema>;
 export type UpdateAdminVideoInput = z.infer<typeof updateAdminVideoSchema>;
 export type ListAdminVideosQuery = z.infer<typeof listAdminVideosQuerySchema>;
 export type VideoStatus = z.infer<typeof videoStatusSchema>;
+export type CreateAdminContentTagInput = z.infer<
+  typeof createAdminContentTagSchema
+>;
+export type UpdateAdminContentTagInput = z.infer<
+  typeof updateAdminContentTagSchema
+>;
 
 export function parseVideoId(rawValue: unknown): string {
   const parsed = videoIdSchema.safeParse(rawValue);
 
   if (!parsed.success) {
     throw new BadRequestException('Video ID was invalid.');
+  }
+
+  return parsed.data;
+}
+
+export function parseCreateAdminContentTagInput(
+  payload: unknown,
+): CreateAdminContentTagInput {
+  const parsed = createAdminContentTagSchema.safeParse(payload);
+
+  if (!parsed.success) {
+    throw new BadRequestException({
+      message: 'Invalid admin content tag create payload.',
+      errors: parsed.error.flatten().fieldErrors,
+    });
+  }
+
+  return parsed.data;
+}
+
+export function parseUpdateAdminContentTagInput(
+  payload: unknown,
+): UpdateAdminContentTagInput {
+  const parsed = updateAdminContentTagSchema.safeParse(payload);
+
+  if (!parsed.success) {
+    throw new BadRequestException({
+      message: 'Invalid admin content tag update payload.',
+      errors: parsed.error.flatten().fieldErrors,
+    });
+  }
+
+  return parsed.data;
+}
+
+export function parseContentTagId(rawValue: unknown): string {
+  const parsed = contentTagIdSchema.safeParse(rawValue);
+
+  if (!parsed.success) {
+    throw new BadRequestException('Content tag ID was invalid.');
   }
 
   return parsed.data;
