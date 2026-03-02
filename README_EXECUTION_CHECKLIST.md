@@ -174,7 +174,7 @@ Blockers:
   - Assign tags during video create/manage flows.
 - [x] 4.15 Backfill existing assignments:
   - One-time migration script maps current `video_content_types` links into initial `content_tags` so existing admin data remains usable.
-- [ ] 4.16 Replace static feed source with backend catalog contract so status + taxonomy rules are enforced by API responses.
+- [x] 4.16 Replace static feed source with backend catalog contract so status + taxonomy rules are enforced by API responses.
 
 ### Test and validation
 - [ ] Admin can upload and publish content.

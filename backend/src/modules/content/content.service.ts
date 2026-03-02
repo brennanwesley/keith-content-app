@@ -35,6 +35,39 @@ const activeParentLinkRowSchema = z.object({
   parent_user_id: z.string().uuid(),
 });
 
+const contentTypeTagMappingRowSchema = z.object({
+  content_type_id: contentTypeIdSchema,
+  content_tag_id: contentTypeIdSchema,
+});
+
+const contentTagIdRowSchema = z.object({
+  id: contentTypeIdSchema,
+});
+
+const videoContentTagRowSchema = z.object({
+  video_id: contentTypeIdSchema,
+  content_tag_id: contentTypeIdSchema,
+});
+
+const feedVideoRowSchema = z.object({
+  id: contentTypeIdSchema,
+  title: z.string(),
+  description: z.string().nullable(),
+  status: z.enum(['draft', 'processing', 'ready', 'blocked', 'archived']),
+  duration_seconds: z.union([z.number().int(), z.null()]),
+  thumbnail_url: z.string().nullable(),
+  published_at: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+const feedVideoAssetRowSchema = z.object({
+  video_id: contentTypeIdSchema,
+  mux_playback_id: z.string().trim().min(1).nullable(),
+  playback_policy: z.enum(['public', 'signed']),
+  encoding_status: z.enum(['pending', 'preparing', 'ready', 'errored']),
+});
+
 export type ContentTypeSummary = {
   id: string;
   slug: string;
@@ -60,6 +93,26 @@ export type EffectiveContentPreferencesResult = {
   effectiveContentTypeIds: string[];
   effectiveContentTypes: ContentTypeSummary[];
   isParentRestricted: boolean;
+};
+
+export type FeedCatalogVideoSummary = {
+  id: string;
+  title: string;
+  description: string | null;
+  status: 'ready';
+  durationSeconds: number | null;
+  thumbnailUrl: string | null;
+  publishedAt: string | null;
+  playbackId: string;
+  playbackPolicy: 'public' | 'signed';
+  playbackUrl: string;
+  contentTagIds: string[];
+};
+
+export type FeedCatalogResult = {
+  userId: string;
+  effectiveContentTypeIds: string[];
+  videos: FeedCatalogVideoSummary[];
 };
 
 @Injectable()
@@ -236,6 +289,222 @@ export class ContentService {
     };
   }
 
+  async getFeedCatalog(userId: string): Promise<FeedCatalogResult> {
+    const client = this.getClientOrThrow();
+    const effectivePreferences =
+      await this.getEffectiveContentPreferences(userId);
+    const effectiveContentTypeIds =
+      effectivePreferences.effectiveContentTypeIds;
+
+    if (effectiveContentTypeIds.length === 0) {
+      return {
+        userId,
+        effectiveContentTypeIds,
+        videos: [],
+      };
+    }
+
+    const { data: mappingRows, error: mappingError } = await client
+      .from('content_type_tag_mappings')
+      .select('content_type_id, content_tag_id')
+      .in('content_type_id', effectiveContentTypeIds);
+
+    if (mappingError) {
+      throw new InternalServerErrorException(
+        'Failed to load content type to tag mappings for feed.',
+      );
+    }
+
+    const parsedMappingRows = z
+      .array(contentTypeTagMappingRowSchema)
+      .safeParse(mappingRows ?? []);
+
+    if (!parsedMappingRows.success) {
+      throw new InternalServerErrorException(
+        'Content type to tag mapping payload was invalid.',
+      );
+    }
+
+    const mappedContentTagIds = Array.from(
+      new Set(parsedMappingRows.data.map((row) => row.content_tag_id)),
+    );
+
+    if (mappedContentTagIds.length === 0) {
+      return {
+        userId,
+        effectiveContentTypeIds,
+        videos: [],
+      };
+    }
+
+    const { data: activeContentTagRows, error: activeContentTagError } =
+      await client
+        .from('content_tags')
+        .select('id')
+        .eq('is_active', true)
+        .in('id', mappedContentTagIds);
+
+    if (activeContentTagError) {
+      throw new InternalServerErrorException(
+        'Failed to load active content tags for feed.',
+      );
+    }
+
+    const parsedActiveContentTagRows = z
+      .array(contentTagIdRowSchema)
+      .safeParse(activeContentTagRows ?? []);
+
+    if (!parsedActiveContentTagRows.success) {
+      throw new InternalServerErrorException(
+        'Active content tags payload was invalid.',
+      );
+    }
+
+    const activeMappedContentTagIds = parsedActiveContentTagRows.data.map(
+      (row) => row.id,
+    );
+
+    if (activeMappedContentTagIds.length === 0) {
+      return {
+        userId,
+        effectiveContentTypeIds,
+        videos: [],
+      };
+    }
+
+    const { data: videoContentTagRows, error: videoContentTagError } =
+      await client
+        .from('video_content_tags')
+        .select('video_id, content_tag_id')
+        .in('content_tag_id', activeMappedContentTagIds);
+
+    if (videoContentTagError) {
+      throw new InternalServerErrorException(
+        'Failed to load video content-tag assignments for feed.',
+      );
+    }
+
+    const parsedVideoContentTagRows = z
+      .array(videoContentTagRowSchema)
+      .safeParse(videoContentTagRows ?? []);
+
+    if (!parsedVideoContentTagRows.success) {
+      throw new InternalServerErrorException(
+        'Video content-tag assignments payload was invalid.',
+      );
+    }
+
+    const videoIds = Array.from(
+      new Set(parsedVideoContentTagRows.data.map((row) => row.video_id)),
+    );
+
+    if (videoIds.length === 0) {
+      return {
+        userId,
+        effectiveContentTypeIds,
+        videos: [],
+      };
+    }
+
+    const { data: videoRows, error: videoRowsError } = await client
+      .from('videos')
+      .select(
+        'id, title, description, status, duration_seconds, thumbnail_url, published_at, created_at, updated_at',
+      )
+      .eq('status', 'ready')
+      .in('id', videoIds)
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (videoRowsError) {
+      throw new InternalServerErrorException('Failed to load feed videos.');
+    }
+
+    const parsedVideoRows = z
+      .array(feedVideoRowSchema)
+      .safeParse(videoRows ?? []);
+
+    if (!parsedVideoRows.success) {
+      throw new InternalServerErrorException('Feed video payload was invalid.');
+    }
+
+    const { data: videoAssetRows, error: videoAssetError } = await client
+      .from('video_assets')
+      .select('video_id, mux_playback_id, playback_policy, encoding_status')
+      .eq('encoding_status', 'ready')
+      .eq('playback_policy', 'public')
+      .in('video_id', videoIds);
+
+    if (videoAssetError) {
+      throw new InternalServerErrorException(
+        'Failed to load feed video assets.',
+      );
+    }
+
+    const parsedVideoAssetRows = z
+      .array(feedVideoAssetRowSchema)
+      .safeParse(videoAssetRows ?? []);
+
+    if (!parsedVideoAssetRows.success) {
+      throw new InternalServerErrorException(
+        'Feed video asset payload was invalid.',
+      );
+    }
+
+    const playableAssetByVideoId = new Map(
+      parsedVideoAssetRows.data
+        .filter((row) => row.mux_playback_id)
+        .map((row) => [row.video_id, row]),
+    );
+
+    const contentTagIdsByVideoId = new Map<string, string[]>();
+
+    for (const row of parsedVideoContentTagRows.data) {
+      const assignedContentTagIds =
+        contentTagIdsByVideoId.get(row.video_id) ?? [];
+      assignedContentTagIds.push(row.content_tag_id);
+      contentTagIdsByVideoId.set(row.video_id, assignedContentTagIds);
+    }
+
+    const videos: FeedCatalogVideoSummary[] = [];
+
+    for (const videoRow of parsedVideoRows.data) {
+      const playableAsset = playableAssetByVideoId.get(videoRow.id);
+
+      if (!playableAsset || !playableAsset.mux_playback_id) {
+        continue;
+      }
+
+      const contentTagIds = Array.from(
+        new Set(contentTagIdsByVideoId.get(videoRow.id) ?? []),
+      );
+
+      if (contentTagIds.length === 0) {
+        continue;
+      }
+
+      videos.push({
+        id: videoRow.id,
+        title: videoRow.title,
+        description: videoRow.description,
+        status: 'ready',
+        durationSeconds: videoRow.duration_seconds,
+        thumbnailUrl: videoRow.thumbnail_url,
+        publishedAt: videoRow.published_at,
+        playbackId: playableAsset.mux_playback_id,
+        playbackPolicy: playableAsset.playback_policy,
+        playbackUrl: this.buildMuxPlaybackUrl(playableAsset.mux_playback_id),
+        contentTagIds,
+      });
+    }
+
+    return {
+      userId,
+      effectiveContentTypeIds,
+      videos,
+    };
+  }
+
   async replaceMyContentPreferences(
     userId: string,
     input: UpdateMyContentPreferencesInput,
@@ -376,6 +645,10 @@ export class ContentService {
         'One or more selected content types are invalid or inactive.',
       );
     }
+  }
+
+  private buildMuxPlaybackUrl(playbackId: string): string {
+    return `https://stream.mux.com/${encodeURIComponent(playbackId)}/medium.mp4`;
   }
 
   private getClientOrThrow() {

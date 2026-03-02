@@ -41,6 +41,14 @@ export class ContentController {
   }
 
   @UseGuards(BearerAuthGuard)
+  @Get('feed/catalog')
+  async getFeedCatalog(@Req() request: AuthenticatedRequest) {
+    return {
+      data: await this.contentService.getFeedCatalog(request.authUser.id),
+    };
+  }
+
+  @UseGuards(BearerAuthGuard)
   @Put('me/content-preferences')
   async updateMyContentPreferences(
     @Req() request: AuthenticatedRequest,

@@ -83,6 +83,26 @@ export type EffectiveContentPreferencesResult = {
   isParentRestricted: boolean;
 };
 
+export type FeedCatalogVideoSummary = {
+  id: string;
+  title: string;
+  description: string | null;
+  status: 'ready';
+  durationSeconds: number | null;
+  thumbnailUrl: string | null;
+  publishedAt: string | null;
+  playbackId: string;
+  playbackPolicy: 'public' | 'signed';
+  playbackUrl: string;
+  contentTagIds: string[];
+};
+
+export type FeedCatalogResult = {
+  userId: string;
+  effectiveContentTypeIds: string[];
+  videos: FeedCatalogVideoSummary[];
+};
+
 export type UpdateMyContentPreferencesRequest = {
   contentTypeIds: string[];
 };
@@ -507,6 +527,22 @@ export async function getMyEffectiveContentPreferences(
 ): Promise<EffectiveContentPreferencesResult> {
   const response = await requestJson<ApiEnvelope<EffectiveContentPreferencesResult>>(
     '/v1/me/effective-content-preferences',
+    {
+      cache: 'no-store',
+      headers: {
+        Authorization: `Bearer ${readBearerTokenOrThrow(accessToken)}`,
+      },
+    },
+  );
+
+  return response.data;
+}
+
+export async function getFeedCatalog(
+  accessToken: string,
+): Promise<FeedCatalogResult> {
+  const response = await requestJson<ApiEnvelope<FeedCatalogResult>>(
+    '/v1/feed/catalog',
     {
       cache: 'no-store',
       headers: {
